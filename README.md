@@ -2,7 +2,7 @@
 
 ![clime hero](docs/assets/readme_clime.png)
 
-**clime is a CLI registry for AI agents and developers.**
+**clime is a CLI registry for AI agents, developers (humans) can use it too.**
 
 One command to discover the right CLI for a task, get install/auth guidance, and execute with predictable output.
 
