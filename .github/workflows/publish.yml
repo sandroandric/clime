@@ -1,0 +1,39 @@
+name: publish-cli
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "cli-v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared types
+        run: npm run -w @cli-me/shared-types build
+
+      - name: Test CLI
+        run: npm run -w @cli-me/cli test
+
+      - name: Build CLI
+        run: npm run -w @cli-me/cli build
+
+      - name: Publish @cli-me/cli
+        run: npm publish --workspace @cli-me/cli --access public --provenance
