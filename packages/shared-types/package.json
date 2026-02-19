@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
-  "types": "src/index.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./openapi": {
-      "types": "./src/openapi.ts",
+      "types": "./dist/openapi.d.ts",
       "import": "./dist/openapi.js"
     }
   },

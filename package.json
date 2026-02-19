@@ -34,9 +34,9 @@
     "seed": "npm run seed -w @cli-me/api",
     "sync:seed": "npm run sync:seed -w @cli-me/api",
     "refresh:checksums": "npm run refresh:checksums -w @cli-me/api",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run build -w @cli-me/shared-types && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build -w @cli-me/shared-types && npm run typecheck --workspaces --if-present",
     "generate:openapi": "npm run generate:openapi -w @cli-me/shared-types",
     "prepare": "husky"
   },

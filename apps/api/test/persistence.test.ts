@@ -4,13 +4,14 @@ import type { Pool } from "pg";
 import { createSeedData } from "../src/data/seed.js";
 import { PostgresPersistence } from "../src/lib/persistence.js";
 import { RegistryStore } from "../src/lib/store.js";
+import type { RegistryData } from "../src/lib/types.js";
 
 let persistence: PostgresPersistence;
 
 beforeAll(async () => {
   const mem = newDb({ autoCreateForeignKeyIndices: true, noAstCoverageCheck: true });
-  const adapter = mem.adapters.createPg();
-  const pool = new adapter.Pool() as unknown as Pool;
+  const adapter = mem.adapters.createPg() as { Pool: new () => Pool };
+  const pool = new adapter.Pool();
   persistence = new PostgresPersistence(pool);
 });
 
@@ -18,9 +19,40 @@ afterAll(async () => {
   await persistence.close();
 });
 
+function createMinimalSeedData(): RegistryData {
+  const seed = createSeedData();
+  const workflow = seed.workflows.find((entry) => entry.id === "wf_full_stack_saas");
+  if (!workflow) {
+    throw new Error("Expected wf_full_stack_saas workflow in seed data");
+  }
+
+  const requiredCliSlugs = new Set(["vercel", ...workflow.steps.map((step) => step.cli_slug)]);
+  const clis = seed.clis.filter((cli) => requiredCliSlugs.has(cli.identity.slug));
+
+  return {
+    ...seed,
+    clis,
+    workflows: [workflow],
+    submissions: [],
+    publisherClaims: [],
+    reports: [],
+    usageEvents: [],
+    unmetRequests: [],
+    listingVersions: clis.flatMap((cli) => (cli.listing_version ? [cli.listing_version] : [])),
+    changes: clis.map((cli, index) => ({
+      id: `chg_test_${index + 1}`,
+      kind: "listing_updated",
+      entity_id: cli.identity.slug,
+      occurred_at: new Date().toISOString(),
+      payload: { version_number: cli.listing_version?.version_number ?? 1 }
+    })),
+    rankings: []
+  };
+}
+
 describe("postgres persistence", () => {
   it("persists submissions and reports across store restarts", async () => {
-    const seed = createSeedData();
+    const seed = createMinimalSeedData();
 
     const first = await RegistryStore.create(seed, persistence);
 
