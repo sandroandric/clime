@@ -1,6 +1,6 @@
 # clime
 
-![clime hero](docs/assets/readme-hero.png)
+![clime hero](docs/assets/readme_clime.png)
 
 **clime is a CLI registry for AI agents and developers.**
 
