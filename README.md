@@ -75,6 +75,11 @@ clime configure --api-key <your-key> --base-url https://api.clime.sh
 
 If no API key is configured, clime auto-generates a local key at `~/.clime/config.json` on first use.
 
+## Repository Scope
+
+This public repository contains the API, CLI, shared types, MCP server, skills, and workers.
+The production web frontend (`apps/web`) is maintained in the private `climeprivate` repository.
+
 ## Agent Instructions
 
 Start here if you are configuring an AI agent workflow.
