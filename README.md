@@ -75,6 +75,38 @@ clime configure --api-key <your-key> --base-url https://api.clime.sh
 
 If no API key is configured, clime auto-generates a local key at `~/.clime/config.json` on first use.
 
+## Agent Instructions
+
+Start here if you are configuring an AI agent workflow.
+
+- Install: [`npm i -g @cli-me/cli`](https://www.npmjs.com/package/@cli-me/cli)
+- Bootstrap: `clime init --agent --json`
+- Discover: `clime search "deploy next.js app" --json`
+- Pick best CLI slug fast: `clime which "set up postgres database" --json`
+- Get executable guidance: `clime info <slug>`, `clime auth <slug>`, `clime commands <slug> --workflow=<tag>`
+
+Website references for agents:
+
+- Registry home: [https://clime.sh](https://clime.sh)
+- Rankings: [https://clime.sh/rankings](https://clime.sh/rankings)
+- Workflows: [https://clime.sh/workflows](https://clime.sh/workflows)
+
+## Developer Instructions
+
+Start here if you are using clime manually as a developer.
+
+- Install: [`npm i -g @cli-me/cli`](https://www.npmjs.com/package/@cli-me/cli)
+- Search by task: `clime search "monitor production api latency"`
+- Explore command references: `clime info <slug>` and `clime commands <slug>`
+- Find workflow chains: `clime workflow "full-stack saas"`
+- Report outcome to improve data: `clime report <slug> --status=success|fail`
+
+Website references for developers:
+
+- Browse catalog: [https://clime.sh/explore](https://clime.sh/explore)
+- Compare categories: [https://clime.sh/categories](https://clime.sh/categories)
+- Submit new CLI: [https://clime.sh/submissions](https://clime.sh/submissions)
+
 ## Core CLI commands
 
 ```bash
