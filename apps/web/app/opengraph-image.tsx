@@ -29,7 +29,7 @@ export default function OpenGraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <div style={{ fontSize: 74, fontWeight: 500, lineHeight: 1.05 }}>
-            The CLI Registry for AI Agents
+            One CLI for agents to know all CLIs
           </div>
           <div style={{ fontSize: 30, color: "#5c5549" }}>
             Search, install, authenticate, and chain CLIs with confidence.
@@ -40,4 +40,3 @@ export default function OpenGraphImage() {
     size
   );
 }
-

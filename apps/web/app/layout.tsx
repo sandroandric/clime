@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     canonical: "https://clime.sh"
   },
   openGraph: {
-    title: "clime | The CLI Registry for AI Agents",
+    title: "clime | One CLI for agents to know all CLIs",
     description:
       "Search, discover, and chain command-line tools for humans and agents with curated workflows and rankings.",
     url: "https://clime.sh",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "clime | The CLI Registry for AI Agents",
+    title: "clime | One CLI for agents to know all CLIs",
     description:
       "Search, discover, and chain command-line tools for humans and agents with curated workflows and rankings.",
     images: ["https://clime.sh/opengraph-image"]
@@ -91,20 +91,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <footer className="page-footer">
             <div className="page-footer-inner">
               <div className="footer-links">
-                <a href="https://github.com/sandroandric/clime" target="_blank" rel="noreferrer">
+                <a href="https://github.com/clime-registry/clime" target="_blank" rel="noreferrer">
                   GitHub
                 </a>
                 <a href="https://www.npmjs.com/package/@cli-me/cli" target="_blank" rel="noreferrer">
                   npm
                 </a>
                 <a href="/blog">Blog</a>
-                <a href="https://github.com/sandroandric/clime#agent-instructions" target="_blank" rel="noreferrer">
-                  Agent Guide
-                </a>
-                <a href="https://github.com/sandroandric/clime#developer-instructions" target="_blank" rel="noreferrer">
-                  Dev Guide
-                </a>
-                <a href="https://github.com/sandroandric/clime#readme" target="_blank" rel="noreferrer">
+                <a href="https://github.com/clime-registry/clime#readme" target="_blank" rel="noreferrer">
                   Docs
                 </a>
               </div>
