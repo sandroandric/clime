@@ -1,0 +1,17 @@
+{
+  "required": [
+    "All modified workspaces pass npm run typecheck",
+    "All modified workspaces pass npm run lint",
+    "All modified workspaces pass npm run test",
+    "All modified workspaces pass npm run build",
+    "At least one manual sanity check covers changed runtime path",
+    "Every completed action is appended to LOG.md with what/how/files"
+  ],
+  "manual_sanity_matrix": [
+    "API health and authenticated /v1 requests",
+    "CLI configure + search + workflow + rankings + report",
+    "Worker indexing, verification, and analytics execution",
+    "Web build and route generation"
+  ],
+  "gates_owner": "engineering"
+}

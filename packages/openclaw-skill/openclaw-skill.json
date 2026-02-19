@@ -1,0 +1,13 @@
+{
+  "name": "clime-cli-discovery",
+  "version": "0.1.0",
+  "description": "Discover, install, authenticate, and execute CLIs via clime for OpenClaw tasks.",
+  "entry": "clime-openclaw-skill",
+  "input": {
+    "task": "Natural language task description",
+    "limit": "Optional max result count (default 5)"
+  },
+  "output": {
+    "recommendations": "CLI candidates with install/auth/command guidance"
+  }
+}

@@ -1,0 +1,51 @@
+node_modules
+npm-debug.log*
+*.tsbuildinfo
+*.log
+*.jsonl
+
+# Build outputs
+dist
+.next
+coverage
+
+# Env and local state
+.env
+.env.*
+!.env.example
+.clime
+.cache
+.tmp
+.temp
+tmp/
+diskcache/
+data/
+
+# OS
+.DS_Store
+/.docdex/
+/.docdex-state/
+/infra/generated/
+/apps/api/scratch-import.ts
+/download-log.txt
+/debug.log
+
+# Local AI/tooling state
+.acurast/
+.bluera/
+.claude/
+.gemini/
+.namnam/
+.noorm/
+.sapper/
+.windsurfrules
+.clinerules
+.cursorrules
+.husky/_
+
+# Accidental local directories
+/--help/
+/--version/
+/-v/
+/auth-boiler-plate/
+/cms-nova-template/

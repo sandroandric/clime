@@ -1,0 +1,3756 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Clime Registry API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/search": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0,
+                    "maximum": 25,
+                    "default": 10
+                  },
+                  "agent_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "cli": {
+                            "type": "object",
+                            "properties": {
+                              "slug": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "publisher": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "category_tags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "minItems": 1
+                              },
+                              "website": {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              "repository": {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              "verification_status": {
+                                "type": "string",
+                                "enum": [
+                                  "auto-indexed",
+                                  "community-curated",
+                                  "publisher-verified"
+                                ]
+                              },
+                              "latest_version": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "last_updated": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "last_verified": {
+                                "$ref": "#/properties/data/items/properties/cli/properties/last_updated"
+                              },
+                              "popularity_score": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "trust_score": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "permission_scope": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              },
+                              "compatibility": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "agent_name": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "verified",
+                                        "partial",
+                                        "failed",
+                                        "untested"
+                                      ]
+                                    },
+                                    "success_rate": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    },
+                                    "last_verified": {
+                                      "$ref": "#/properties/data/items/properties/cli/properties/last_updated"
+                                    }
+                                  },
+                                  "required": [
+                                    "agent_name",
+                                    "status",
+                                    "success_rate",
+                                    "last_verified"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "default": []
+                              }
+                            },
+                            "required": [
+                              "slug",
+                              "name",
+                              "publisher",
+                              "description",
+                              "category_tags",
+                              "website",
+                              "repository",
+                              "verification_status",
+                              "latest_version",
+                              "last_updated",
+                              "popularity_score",
+                              "trust_score"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "install_command": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "matched_workflows": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "default": []
+                          },
+                          "top_matching_commands": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "default": []
+                          }
+                        },
+                        "required": [
+                          "cli",
+                          "score",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "message": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "request_id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clis/{slug}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "CLI profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "identity": {
+                          "type": "object",
+                          "properties": {
+                            "slug": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "publisher": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "category_tags": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "minItems": 1
+                            },
+                            "website": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "repository": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "verification_status": {
+                              "type": "string",
+                              "enum": [
+                                "auto-indexed",
+                                "community-curated",
+                                "publisher-verified"
+                              ]
+                            },
+                            "latest_version": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "last_updated": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "last_verified": {
+                              "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                            },
+                            "popularity_score": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "trust_score": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "permission_scope": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "compatibility": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "agent_name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "verified",
+                                      "partial",
+                                      "failed",
+                                      "untested"
+                                    ]
+                                  },
+                                  "success_rate": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "last_verified": {
+                                    "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                                  }
+                                },
+                                "required": [
+                                  "agent_name",
+                                  "status",
+                                  "success_rate",
+                                  "last_verified"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "default": []
+                            }
+                          },
+                          "required": [
+                            "slug",
+                            "name",
+                            "publisher",
+                            "description",
+                            "category_tags",
+                            "website",
+                            "repository",
+                            "verification_status",
+                            "latest_version",
+                            "last_updated",
+                            "popularity_score",
+                            "trust_score"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "install": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "os": {
+                                "type": "string",
+                                "enum": [
+                                  "macos",
+                                  "linux",
+                                  "windows",
+                                  "any"
+                                ]
+                              },
+                              "package_manager": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "command": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "checksum": {
+                                "type": "string"
+                              },
+                              "signature": {
+                                "type": "string"
+                              },
+                              "dependencies": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              }
+                            },
+                            "required": [
+                              "os",
+                              "package_manager",
+                              "command"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "auth_type": {
+                              "type": "string",
+                              "enum": [
+                                "api_key",
+                                "oauth",
+                                "login_command",
+                                "config_file",
+                                "none"
+                              ]
+                            },
+                            "setup_steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "order": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "instruction": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "command": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "order",
+                                  "instruction"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "environment_variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "token_refresh": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "scopes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            }
+                          },
+                          "required": [
+                            "auth_type",
+                            "setup_steps",
+                            "token_refresh"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "commands": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "cli_slug": {
+                                "$ref": "#/properties/data/properties/identity/properties/slug"
+                              },
+                              "command": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "required_parameters": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "default_value": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "default": []
+                              },
+                              "optional_parameters": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/properties/data/properties/commands/items/properties/required_parameters/items"
+                                },
+                                "default": []
+                              },
+                              "examples": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "minItems": 1
+                              },
+                              "expected_output": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "common_errors": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              },
+                              "workflow_context": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "cli_slug",
+                              "command",
+                              "description",
+                              "examples",
+                              "expected_output"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "listing_version": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "cli_slug": {
+                              "$ref": "#/properties/data/properties/identity/properties/slug"
+                            },
+                            "version_number": {
+                              "type": "integer",
+                              "exclusiveMinimum": true,
+                              "minimum": 0
+                            },
+                            "changed_fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "changelog": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "updated_at": {
+                              "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "cli_slug",
+                            "version_number",
+                            "changelog",
+                            "updated_at"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "identity",
+                        "install",
+                        "auth",
+                        "commands"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clis/{slug}/install": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Install instructions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "os": {
+                            "type": "string",
+                            "enum": [
+                              "macos",
+                              "linux",
+                              "windows",
+                              "any"
+                            ]
+                          },
+                          "package_manager": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "command": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "checksum": {
+                            "type": "string"
+                          },
+                          "signature": {
+                            "type": "string"
+                          },
+                          "dependencies": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "default": []
+                          }
+                        },
+                        "required": [
+                          "os",
+                          "package_manager",
+                          "command"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clis/{slug}/commands": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "CLI commands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "cli_slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "command": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "required_parameters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default_value": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "type",
+                                "description"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "default": []
+                          },
+                          "optional_parameters": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/properties/data/items/properties/required_parameters/items"
+                            },
+                            "default": []
+                          },
+                          "examples": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1
+                          },
+                          "expected_output": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "common_errors": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "default": []
+                          },
+                          "workflow_context": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "default": []
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "cli_slug",
+                          "command",
+                          "description",
+                          "examples",
+                          "expected_output"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clis/{slug}/auth": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "CLI auth guide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "auth_type": {
+                          "type": "string",
+                          "enum": [
+                            "api_key",
+                            "oauth",
+                            "login_command",
+                            "config_file",
+                            "none"
+                          ]
+                        },
+                        "setup_steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "order": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "instruction": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "command": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "order",
+                              "instruction"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "environment_variables": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "default": []
+                        },
+                        "token_refresh": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "auth_type",
+                        "setup_steps",
+                        "token_refresh"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Workflow list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1
+                          },
+                          "estimated_minutes": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "step_number": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "cli_slug": {
+                                  "$ref": "#/properties/data/items/properties/slug"
+                                },
+                                "purpose": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "command_ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "minItems": 1
+                                },
+                                "auth_prerequisite": {
+                                  "type": "boolean",
+                                  "default": false
+                                }
+                              },
+                              "required": [
+                                "step_number",
+                                "cli_slug",
+                                "purpose",
+                                "command_ids"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "minItems": 1
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "$ref": "#/properties/data/items/properties/created_at"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "slug",
+                          "title",
+                          "description",
+                          "tags",
+                          "estimated_minutes",
+                          "steps",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Workflow detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "slug": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        },
+                        "estimated_minutes": {
+                          "type": "integer",
+                          "exclusiveMinimum": true,
+                          "minimum": 0
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step_number": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "cli_slug": {
+                                "$ref": "#/properties/data/properties/slug"
+                              },
+                              "purpose": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "command_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "minItems": 1
+                              },
+                              "auth_prerequisite": {
+                                "type": "boolean",
+                                "default": false
+                              }
+                            },
+                            "required": [
+                              "step_number",
+                              "cli_slug",
+                              "purpose",
+                              "command_ids"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 1
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updated_at": {
+                          "$ref": "#/properties/data/properties/created_at"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "title",
+                        "description",
+                        "tags",
+                        "estimated_minutes",
+                        "steps",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workflows/search": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0,
+                    "maximum": 25,
+                    "default": 10
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow search",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1
+                          },
+                          "estimated_minutes": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "step_number": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "cli_slug": {
+                                  "$ref": "#/properties/data/items/properties/slug"
+                                },
+                                "purpose": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "command_ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "minItems": 1
+                                },
+                                "auth_prerequisite": {
+                                  "type": "boolean",
+                                  "default": false
+                                }
+                              },
+                              "required": [
+                                "step_number",
+                                "cli_slug",
+                                "purpose",
+                                "command_ids"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "minItems": 1
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "$ref": "#/properties/data/items/properties/created_at"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "slug",
+                          "title",
+                          "description",
+                          "tags",
+                          "estimated_minutes",
+                          "steps",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rankings": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Rankings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "used",
+                            "rising",
+                            "compat",
+                            "requested"
+                          ]
+                        },
+                        "generated_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rank": {
+                                "type": "integer",
+                                "exclusiveMinimum": true,
+                                "minimum": 0
+                              },
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "score": {
+                                "type": "number"
+                              },
+                              "delta": {
+                                "type": "number"
+                              },
+                              "metadata": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    }
+                                  ]
+                                },
+                                "default": {}
+                              }
+                            },
+                            "required": [
+                              "rank",
+                              "id",
+                              "label",
+                              "score"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "generated_at",
+                        "entries"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/unmet-requests": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Unmet request list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "query": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "last_seen": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "query",
+                          "count",
+                          "last_seen"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/submissions": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Submission list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "new_cli",
+                              "edit_listing"
+                            ]
+                          },
+                          "submitter": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "target_cli_slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "content": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "reviewed_at": {
+                            "$ref": "#/properties/data/items/properties/created_at"
+                          },
+                          "reviewer": {
+                            "type": "string"
+                          },
+                          "review_notes": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "submitter",
+                          "content",
+                          "status",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "new_cli",
+                      "edit_listing"
+                    ]
+                  },
+                  "submitter": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_cli_slug": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "content": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "type",
+                  "submitter",
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "new_cli",
+                            "edit_listing"
+                          ]
+                        },
+                        "submitter": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "target_cli_slug": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "content": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "reviewed_at": {
+                          "$ref": "#/properties/data/properties/created_at"
+                        },
+                        "reviewer": {
+                          "type": "string"
+                        },
+                        "review_notes": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "submitter",
+                        "content",
+                        "status",
+                        "created_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/submissions/{id}/review": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "reviewer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "review_notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission moderation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "new_cli",
+                            "edit_listing"
+                          ]
+                        },
+                        "submitter": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "target_cli_slug": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "content": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "reviewed_at": {
+                          "$ref": "#/properties/data/properties/created_at"
+                        },
+                        "reviewer": {
+                          "type": "string"
+                        },
+                        "review_notes": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "submitter",
+                        "content",
+                        "status",
+                        "created_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/claim": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cli_slug": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "publisher_name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "domain": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "verification_method": {
+                    "type": "string",
+                    "enum": [
+                      "dns_txt",
+                      "repo_file"
+                    ]
+                  },
+                  "repository_url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "cli_slug",
+                  "publisher_name",
+                  "domain",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Publisher claim created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "cli_slug": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "publisher_name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "domain": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "evidence": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "verification_method": {
+                          "type": "string",
+                          "enum": [
+                            "dns_txt",
+                            "repo_file"
+                          ],
+                          "default": "dns_txt"
+                        },
+                        "verification_token": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "verification_instructions": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "repository_url": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "verified_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "created_at": {
+                          "$ref": "#/properties/data/properties/verified_at"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "cli_slug",
+                        "publisher_name",
+                        "domain",
+                        "status",
+                        "evidence",
+                        "created_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/claim/{id}/review": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "reviewer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "review_notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Publisher claim moderation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "claim": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "cli_slug": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "publisher_name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "domain": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                              ]
+                            },
+                            "evidence": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "verification_method": {
+                              "type": "string",
+                              "enum": [
+                                "dns_txt",
+                                "repo_file"
+                              ],
+                              "default": "dns_txt"
+                            },
+                            "verification_token": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "verification_instructions": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "repository_url": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "verified_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "created_at": {
+                              "$ref": "#/properties/data/properties/claim/properties/verified_at"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "cli_slug",
+                            "publisher_name",
+                            "domain",
+                            "status",
+                            "evidence",
+                            "created_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "claim",
+                        "verified"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/claim/{id}/verify": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Publisher claim verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "claim": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "cli_slug": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "publisher_name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "domain": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                              ]
+                            },
+                            "evidence": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "verification_method": {
+                              "type": "string",
+                              "enum": [
+                                "dns_txt",
+                                "repo_file"
+                              ],
+                              "default": "dns_txt"
+                            },
+                            "verification_token": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "verification_instructions": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "repository_url": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "verified_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "created_at": {
+                              "$ref": "#/properties/data/properties/claim/properties/verified_at"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "cli_slug",
+                            "publisher_name",
+                            "domain",
+                            "status",
+                            "evidence",
+                            "created_at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "claim",
+                        "verified"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/claims": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Publisher claim list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "cli_slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "publisher_name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "domain": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ]
+                          },
+                          "evidence": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "verification_method": {
+                            "type": "string",
+                            "enum": [
+                              "dns_txt",
+                              "repo_file"
+                            ],
+                            "default": "dns_txt"
+                          },
+                          "verification_token": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "verification_instructions": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "repository_url": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "verified_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "created_at": {
+                            "$ref": "#/properties/data/items/properties/verified_at"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "cli_slug",
+                          "publisher_name",
+                          "domain",
+                          "status",
+                          "evidence",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/analytics": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Publisher analytics summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "publisher": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "publisher_slug": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "cli_count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "search_impressions": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "install_attempts": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "command_requests": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "report_count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "report_failures": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "success_reports": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "last_event_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "top_queries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "query": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "query",
+                                "count"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "default": []
+                          },
+                          "top_clis": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "cli_slug": {
+                                  "type": "string",
+                                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                },
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "cli_slug",
+                                "count"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "default": []
+                          }
+                        },
+                        "required": [
+                          "publisher",
+                          "publisher_slug",
+                          "cli_count",
+                          "search_impressions",
+                          "install_attempts",
+                          "command_requests",
+                          "report_count",
+                          "report_failures",
+                          "success_reports"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/analytics/{id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Publisher analytics detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "publisher": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "publisher_slug": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "cli_count": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "search_impressions": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "install_attempts": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "command_requests": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "report_count": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "report_failures": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "success_reports": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "last_event_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "top_queries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "query": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "query",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "default": []
+                        },
+                        "top_clis": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "cli_slug": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "cli_slug",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "publisher",
+                        "publisher_slug",
+                        "cli_count",
+                        "search_impressions",
+                        "install_attempts",
+                        "command_requests",
+                        "report_count",
+                        "report_failures",
+                        "success_reports"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/feed": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Change feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "listing_updated",
+                              "workflow_updated",
+                              "ranking_generated",
+                              "submission_created",
+                              "submission_approved",
+                              "submission_rejected"
+                            ]
+                          },
+                          "entity_id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "occurred_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "payload": {
+                            "type": "object",
+                            "additionalProperties": {},
+                            "default": {}
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "entity_id",
+                          "occurred_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/usage": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Recent usage events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "api_key": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "endpoint": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "method": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "status_code": {
+                            "type": "integer"
+                          },
+                          "latency_ms": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "cli_slug": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                          },
+                          "query": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "api_key",
+                          "endpoint",
+                          "method",
+                          "status_code",
+                          "latency_ms",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/usage/by-key": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Usage summary for an API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "api_key_hash": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "total_requests": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "endpoints": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "endpoint": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "endpoint",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "top_clis": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "cli_slug": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "cli_slug",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "top_queries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "query": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "query",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "last_seen": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "api_key_hash",
+                        "total_requests",
+                        "endpoints",
+                        "top_clis",
+                        "top_queries"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/clis/{slug}/report": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "success",
+                      "fail"
+                    ]
+                  },
+                  "cli_slug": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "cli_version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow_id": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string"
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "agent_name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "agent_version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "macos",
+                      "linux",
+                      "windows",
+                      "any"
+                    ]
+                  },
+                  "arch": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "error_code": {
+                    "type": "string"
+                  },
+                  "stderr_hash": {
+                    "type": "string"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "status",
+                  "cli_slug",
+                  "cli_version",
+                  "duration_ms",
+                  "exit_code",
+                  "agent_name",
+                  "agent_version",
+                  "os",
+                  "arch",
+                  "request_id",
+                  "timestamp"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Report accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "duplicate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "accepted",
+                        "duplicate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/publishers/listings/{slug}/update": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "publisher_name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "auth": {
+                    "type": "object",
+                    "properties": {
+                      "auth_type": {
+                        "type": "string",
+                        "enum": [
+                          "api_key",
+                          "oauth",
+                          "login_command",
+                          "config_file",
+                          "none"
+                        ]
+                      },
+                      "setup_steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "order": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "instruction": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "order",
+                            "instruction"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "environment_variables": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "default": []
+                      },
+                      "token_refresh": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "scopes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "default": []
+                      }
+                    },
+                    "required": [
+                      "auth_type",
+                      "setup_steps",
+                      "token_refresh"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "cli_slug": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "required_parameters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "type": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default_value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "type",
+                              "description"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "default": []
+                        },
+                        "optional_parameters": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/properties/commands/items/properties/required_parameters/items"
+                          },
+                          "default": []
+                        },
+                        "examples": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        },
+                        "expected_output": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "common_errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "default": []
+                        },
+                        "workflow_context": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "cli_slug",
+                        "command",
+                        "description",
+                        "examples",
+                        "expected_output"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "install": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "os": {
+                          "type": "string",
+                          "enum": [
+                            "macos",
+                            "linux",
+                            "windows",
+                            "any"
+                          ]
+                        },
+                        "package_manager": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "command": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "checksum": {
+                          "type": "string"
+                        },
+                        "signature": {
+                          "type": "string"
+                        },
+                        "dependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "os",
+                        "package_manager",
+                        "command"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "publisher_name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Publisher listing update applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "identity": {
+                          "type": "object",
+                          "properties": {
+                            "slug": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "publisher": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "category_tags": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "minItems": 1
+                            },
+                            "website": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "repository": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "verification_status": {
+                              "type": "string",
+                              "enum": [
+                                "auto-indexed",
+                                "community-curated",
+                                "publisher-verified"
+                              ]
+                            },
+                            "latest_version": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "last_updated": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "last_verified": {
+                              "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                            },
+                            "popularity_score": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "trust_score": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "permission_scope": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "compatibility": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "agent_name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "verified",
+                                      "partial",
+                                      "failed",
+                                      "untested"
+                                    ]
+                                  },
+                                  "success_rate": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "last_verified": {
+                                    "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                                  }
+                                },
+                                "required": [
+                                  "agent_name",
+                                  "status",
+                                  "success_rate",
+                                  "last_verified"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "default": []
+                            }
+                          },
+                          "required": [
+                            "slug",
+                            "name",
+                            "publisher",
+                            "description",
+                            "category_tags",
+                            "website",
+                            "repository",
+                            "verification_status",
+                            "latest_version",
+                            "last_updated",
+                            "popularity_score",
+                            "trust_score"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "install": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "os": {
+                                "type": "string",
+                                "enum": [
+                                  "macos",
+                                  "linux",
+                                  "windows",
+                                  "any"
+                                ]
+                              },
+                              "package_manager": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "command": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "checksum": {
+                                "type": "string"
+                              },
+                              "signature": {
+                                "type": "string"
+                              },
+                              "dependencies": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              }
+                            },
+                            "required": [
+                              "os",
+                              "package_manager",
+                              "command"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "auth_type": {
+                              "type": "string",
+                              "enum": [
+                                "api_key",
+                                "oauth",
+                                "login_command",
+                                "config_file",
+                                "none"
+                              ]
+                            },
+                            "setup_steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "order": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "instruction": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "command": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "order",
+                                  "instruction"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "environment_variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "token_refresh": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "scopes": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            }
+                          },
+                          "required": [
+                            "auth_type",
+                            "setup_steps",
+                            "token_refresh"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "commands": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "cli_slug": {
+                                "$ref": "#/properties/data/properties/identity/properties/slug"
+                              },
+                              "command": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "required_parameters": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "default_value": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "default": []
+                              },
+                              "optional_parameters": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/properties/data/properties/commands/items/properties/required_parameters/items"
+                                },
+                                "default": []
+                              },
+                              "examples": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "minItems": 1
+                              },
+                              "expected_output": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "common_errors": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              },
+                              "workflow_context": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "default": []
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "cli_slug",
+                              "command",
+                              "description",
+                              "examples",
+                              "expected_output"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "listing_version": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "cli_slug": {
+                              "$ref": "#/properties/data/properties/identity/properties/slug"
+                            },
+                            "version_number": {
+                              "type": "integer",
+                              "exclusiveMinimum": true,
+                              "minimum": 0
+                            },
+                            "changed_fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "default": []
+                            },
+                            "changelog": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "updated_at": {
+                              "$ref": "#/properties/data/properties/identity/properties/last_updated"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "cli_slug",
+                            "version_number",
+                            "changelog",
+                            "updated_at"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "identity",
+                        "install",
+                        "auth",
+                        "commands"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
