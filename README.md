@@ -12,13 +12,13 @@ One command to discover the right CLI for a task, get install/auth guidance, and
 
 ## Why clime
 
-Agents already know shell commands, but they still struggle with:
+Agents (like OpenClaw friendly 🦞) already know shell commands, but they still struggle with:
 
 - tool discovery (`which CLI should I use?`)
 - setup (`how do I install/auth safely?`)
 - command fluency (`which commands/flags matter for this workflow?`)
 
-clime provides a shell-first registry so one integration can work across many tools.
+clime provides a shell-first registry so one integration can work across many tools (and save you tokens).
 
 ## Who this is for
 
