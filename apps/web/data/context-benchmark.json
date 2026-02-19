@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-02-19T14:20:57.531Z",
+  "api_base_url": "https://api.clime.sh",
+  "cli_count": 845,
+  "query_set": [
+    "deploy next.js app",
+    "set up postgres database",
+    "configure stripe payments",
+    "add authentication to saas app",
+    "set up monitoring and alerts",
+    "deploy static site with cdn",
+    "run kubernetes rollout",
+    "trigger ci pipeline",
+    "process background jobs",
+    "provision terraform stack"
+  ],
+  "methodology": {
+    "o_1_definition": "Single registry tool context (`clime.search`) regardless of catalog size.",
+    "o_n_definition": "One wrapper tool per CLI provided directly to the agent context.",
+    "token_estimation": "Estimated tokens = UTF-8 bytes / 4 (rounded up).",
+    "latency_notes": "O(1) latency measured from live /v1/discover API calls. O(n) latency measured as local linear scan over in-context tool wrappers."
+  },
+  "baseline_o_1": {
+    "context_bytes": 295,
+    "estimated_tokens": 74
+  },
+  "comparisons": [
+    {
+      "tool_count": 10,
+      "o_n_context_bytes": 3753,
+      "o_n_estimated_tokens": 939,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 12.69,
+      "context_reduction_percent_using_o_1": 92.12,
+      "o_n_linear_scan_ms": 0.0132
+    },
+    {
+      "tool_count": 25,
+      "o_n_context_bytes": 9086,
+      "o_n_estimated_tokens": 2272,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 30.7,
+      "context_reduction_percent_using_o_1": 96.74,
+      "o_n_linear_scan_ms": 0.0211
+    },
+    {
+      "tool_count": 50,
+      "o_n_context_bytes": 18544,
+      "o_n_estimated_tokens": 4636,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 62.65,
+      "context_reduction_percent_using_o_1": 98.4,
+      "o_n_linear_scan_ms": 0.0375
+    },
+    {
+      "tool_count": 100,
+      "o_n_context_bytes": 36916,
+      "o_n_estimated_tokens": 9229,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 124.72,
+      "context_reduction_percent_using_o_1": 99.2,
+      "o_n_linear_scan_ms": 0.0708
+    },
+    {
+      "tool_count": 200,
+      "o_n_context_bytes": 74756,
+      "o_n_estimated_tokens": 18689,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 252.55,
+      "context_reduction_percent_using_o_1": 99.6,
+      "o_n_linear_scan_ms": 0.1345
+    },
+    {
+      "tool_count": 500,
+      "o_n_context_bytes": 184391,
+      "o_n_estimated_tokens": 46098,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 622.95,
+      "context_reduction_percent_using_o_1": 99.84,
+      "o_n_linear_scan_ms": 0.3776
+    },
+    {
+      "tool_count": 845,
+      "o_n_context_bytes": 308482,
+      "o_n_estimated_tokens": 77121,
+      "o_1_context_bytes": 295,
+      "o_1_estimated_tokens": 74,
+      "token_ratio_o_n_to_o_1": 1042.18,
+      "context_reduction_percent_using_o_1": 99.9,
+      "o_n_linear_scan_ms": 0.6662
+    }
+  ],
+  "o_1_live_discover_latency_ms": {
+    "average": 1096.29,
+    "p95": 1573.61
+  }
+}

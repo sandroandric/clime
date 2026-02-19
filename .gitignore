@@ -18,8 +18,8 @@ coverage
 .tmp
 .temp
 tmp/
-diskcache/
-data/
+/diskcache/
+/data/
 
 # OS
 .DS_Store
