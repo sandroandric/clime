@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { arch, platform } from 'node:os';
 import { Command } from 'commander';
 import {
@@ -38,6 +39,26 @@ const ALLOWED_INSTALL_COMMANDS = new Set([
 ]);
 
 const ALLOWED_VERSION_FLAGS = new Set(['--version', '-v', '-V', 'version', '--ver']);
+const require = createRequire(import.meta.url);
+
+function resolveCliVersion() {
+  if (process.env.npm_package_version) {
+    return process.env.npm_package_version;
+  }
+
+  try {
+    const pkg = require('../package.json') as { version?: string };
+    if (typeof pkg.version === 'string' && pkg.version.length > 0) {
+      return pkg.version;
+    }
+  } catch {
+    // Best effort only: packaged installs should include package.json.
+  }
+
+  return '0.1.0';
+}
+
+const CLI_VERSION = resolveCliVersion();
 
 const NPM_INSTALL_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
 const NPM_VERIFY_TIMEOUT_MS = 15_000;
@@ -434,7 +455,7 @@ async function run() {
   program
     .name('clime')
     .description('Universal CLI registry for AI agents')
-    .version(process.env.npm_package_version ?? '0.1.0')
+    .version(CLI_VERSION)
     .option('--api-key <key>', 'Override API key')
     .option('--key <key>', 'Alias for --api-key')
     .option('--base-url <url>', 'Override API base URL')
