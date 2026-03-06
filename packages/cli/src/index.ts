@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { arch, platform } from 'node:os';
 import { Command } from 'commander';
 import {
@@ -10,6 +10,7 @@ import {
   RankingTypeSchema,
 } from '@cli-me/shared-types';
 import { ClimeApiClient } from './client.js';
+import { checksumMatchesDigest } from './checksum.js';
 import { getConfigPath, resolveRuntimeConfig, writeConfig } from './config.js';
 import { CliError, errorEnvelope } from './errors.js';
 import { renderOutput, type OutputMode } from './output.js';
@@ -39,26 +40,6 @@ const ALLOWED_INSTALL_COMMANDS = new Set([
 ]);
 
 const ALLOWED_VERSION_FLAGS = new Set(['--version', '-v', '-V', 'version', '--ver']);
-const require = createRequire(import.meta.url);
-
-function resolveCliVersion() {
-  if (process.env.npm_package_version) {
-    return process.env.npm_package_version;
-  }
-
-  try {
-    const pkg = require('../package.json') as { version?: string };
-    if (typeof pkg.version === 'string' && pkg.version.length > 0) {
-      return pkg.version;
-    }
-  } catch {
-    // Best effort only: packaged installs should include package.json.
-  }
-
-  return '0.1.0';
-}
-
-const CLI_VERSION = resolveCliVersion();
 
 const NPM_INSTALL_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
 const NPM_VERIFY_TIMEOUT_MS = 15_000;
@@ -243,7 +224,7 @@ async function verifyNpmInstallBinding(
     return false;
   }
 
-  return registrySha256.toLowerCase() === expectedSha256.toLowerCase();
+  return checksumMatchesDigest(expectedSha256, registrySha256);
 }
 
 function parseInstallCommand(command: string): { executable: string; args: string[] } | null {
@@ -441,6 +422,21 @@ function resolveCompletionShell(input?: string) {
   throw new CliError('VALIDATION_ERROR', 'Shell must be one of: bash, zsh, fish', 1);
 }
 
+function resolveCliVersion() {
+  if (process.env.npm_package_version) {
+    return process.env.npm_package_version;
+  }
+
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as { version?: string };
+    return packageJson.version ?? '0.1.0';
+  } catch {
+    return '0.1.0';
+  }
+}
+
 function completionCommands(program: Command) {
   return [
     ...new Set(
@@ -455,7 +451,7 @@ async function run() {
   program
     .name('clime')
     .description('Universal CLI registry for AI agents')
-    .version(CLI_VERSION)
+    .version(resolveCliVersion())
     .option('--api-key <key>', 'Override API key')
     .option('--key <key>', 'Alias for --api-key')
     .option('--base-url <url>', 'Override API base URL')

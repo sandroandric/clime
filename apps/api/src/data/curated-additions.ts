@@ -800,6 +800,209 @@ export const curatedCliAdditions: CliProfile[] = [
       changelog: "Initial curated listing",
       updated_at: now
     }
+  },
+  {
+    identity: {
+      slug: "gws",
+      name: "Google Workspace CLI",
+      publisher: "Google Workspace",
+      description: "Dynamic CLI for Drive, Gmail, Calendar, Sheets, Chat, and the wider Google Workspace API surface",
+      category_tags: ["workspace", "google", "productivity", "automation", "api"],
+      website: "https://github.com/googleworkspace/cli",
+      repository: "https://github.com/googleworkspace/cli",
+      verification_status: "community-curated",
+      latest_version: "0.7.0",
+      last_updated: now,
+      last_verified: now,
+      popularity_score: 72,
+      trust_score: 84,
+      permission_scope: ["network", "credentials", "filesystem", "browser"],
+      compatibility: [
+        {
+          agent_name: "codex-cli",
+          status: "verified",
+          success_rate: 0.93,
+          last_verified: now
+        }
+      ]
+    },
+    install: [
+      {
+        os: "any",
+        package_manager: "npm",
+        command: "npm install -g @googleworkspace/cli",
+        checksum: undefined,
+        dependencies: ["node>=18"]
+      },
+      {
+        os: "any",
+        package_manager: "cargo",
+        command: "cargo install --git https://github.com/googleworkspace/cli --locked",
+        checksum: undefined,
+        dependencies: ["rust>=1.81"]
+      },
+      {
+        os: "any",
+        package_manager: "nix",
+        command: "nix run github:googleworkspace/cli",
+        checksum: undefined,
+        dependencies: ["nix"]
+      }
+    ],
+    auth: {
+      auth_type: "oauth",
+      setup_steps: [
+        {
+          order: 1,
+          instruction: "Run the guided Google Cloud and OAuth bootstrap if gcloud is available",
+          command: "gws auth setup"
+        },
+        {
+          order: 2,
+          instruction: "Authenticate interactively and request only the Workspace scopes you need",
+          command: "gws auth login --scopes drive,gmail,calendar"
+        },
+        {
+          order: 3,
+          instruction: "For CI or headless agents, export credentials or point the CLI at a credentials file",
+          command: "gws auth export --unmasked > credentials.json"
+        }
+      ],
+      environment_variables: [
+        "GOOGLE_WORKSPACE_CLI_TOKEN",
+        "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE",
+        "GOOGLE_WORKSPACE_CLI_CLIENT_ID",
+        "GOOGLE_WORKSPACE_CLI_CLIENT_SECRET",
+        "GOOGLE_WORKSPACE_PROJECT_ID"
+      ],
+      token_refresh:
+        "Refresh access by rerunning gws auth login, exporting a new credentials file, or replacing GOOGLE_WORKSPACE_CLI_TOKEN with a fresh access token.",
+      scopes: ["drive", "gmail", "calendar", "sheets", "chat"]
+    },
+    commands: [
+      {
+        id: "gws-auth-setup",
+        cli_slug: "gws",
+        command: "gws auth setup",
+        description: "Guided bootstrap for Google Cloud project, OAuth client, and Workspace auth prerequisites",
+        required_parameters: [],
+        optional_parameters: [],
+        examples: ["gws auth setup"],
+        expected_output: "Interactive setup prompts and project/client configuration summary",
+        common_errors: ["gcloud CLI not found", "Access blocked", "Quota project misconfigured"],
+        workflow_context: ["workspace-api-bootstrap"]
+      },
+      {
+        id: "gws-auth-login",
+        cli_slug: "gws",
+        command: "gws auth login",
+        description: "Authenticate the CLI with OAuth scopes for the Workspace services you plan to automate",
+        required_parameters: [],
+        optional_parameters: [
+          {
+            name: "--scopes",
+            type: "string",
+            description: "Comma-separated service scope preset such as drive,gmail,calendar"
+          }
+        ],
+        examples: ["gws auth login --scopes drive,gmail,sheets"],
+        expected_output: "Successful OAuth callback and encrypted credential storage confirmation",
+        common_errors: ["Access blocked", "redirect_uri_mismatch", "Too many scopes for unverified app"],
+        workflow_context: ["workspace-api-bootstrap"]
+      },
+      {
+        id: "gws-drive-files-list",
+        cli_slug: "gws",
+        command: "gws drive files list",
+        description: "List Google Drive files with structured JSON output and discovery-backed parameters",
+        required_parameters: [],
+        optional_parameters: [
+          {
+            name: "--params",
+            type: "json",
+            description: "Google API parameter object encoded as JSON"
+          },
+          {
+            name: "--page-all",
+            type: "boolean",
+            description: "Paginate through all result pages as NDJSON"
+          }
+        ],
+        examples: [
+          "gws drive files list --params '{\"pageSize\": 5}'",
+          "gws drive files list --params '{\"pageSize\": 100}' --page-all"
+        ],
+        expected_output: "JSON or NDJSON listing Drive file metadata",
+        common_errors: ["accessNotConfigured", "Insufficient OAuth scopes"],
+        workflow_context: ["workspace-api-bootstrap"]
+      },
+      {
+        id: "gws-sheets-spreadsheets-create",
+        cli_slug: "gws",
+        command: "gws sheets spreadsheets create",
+        description: "Create a new Google Sheet with a JSON request body",
+        required_parameters: [
+          {
+            name: "--json",
+            type: "json",
+            description: "Request body for the spreadsheet resource"
+          }
+        ],
+        optional_parameters: [],
+        examples: [
+          "gws sheets spreadsheets create --json '{\"properties\":{\"title\":\"Q1 Budget\"}}'"
+        ],
+        expected_output: "Created spreadsheet resource with spreadsheetId and URL metadata",
+        common_errors: ["Invalid JSON body", "Sheets API not enabled"],
+        workflow_context: ["workspace-api-bootstrap"]
+      },
+      {
+        id: "gws-schema-drive-files-list",
+        cli_slug: "gws",
+        command: "gws schema drive.files.list",
+        description: "Inspect the request and response schema for a discovery-backed API method before automating it",
+        required_parameters: [],
+        optional_parameters: [],
+        examples: ["gws schema drive.files.list"],
+        expected_output: "Method schema description with params, request body, and response shape",
+        common_errors: ["Unknown service", "Unknown method"],
+        workflow_context: ["workspace-api-bootstrap"]
+      },
+      {
+        id: "gws-mcp",
+        cli_slug: "gws",
+        command: "gws mcp",
+        description: "Start the built-in MCP server and expose selected Workspace services as tools",
+        required_parameters: [],
+        optional_parameters: [
+          {
+            name: "-s, --services",
+            type: "string",
+            description: "Comma-separated service list or all"
+          },
+          {
+            name: "-w, --workflows",
+            type: "boolean",
+            description: "Expose workflow tools in addition to API tools"
+          }
+        ],
+        examples: [
+          "gws mcp -s drive,gmail,calendar",
+          "gws mcp -s drive --workflows"
+        ],
+        expected_output: "Long-running stdio MCP server process for compatible clients",
+        common_errors: ["No valid credentials found", "Too many services for client tool limit"],
+        workflow_context: ["workspace-api-bootstrap"]
+      }
+    ],
+    listing_version: {
+      id: "lv_gws_1",
+      cli_slug: "gws",
+      version_number: 1,
+      changed_fields: ["identity", "install", "auth", "commands"],
+      changelog: "Added curated Google Workspace CLI listing from official package and README.",
+      updated_at: now
+    }
   }
 ];
 
@@ -884,6 +1087,30 @@ export const curatedWorkflowAdditions: WorkflowChain[] = [
         purpose: "Run local emulators then deploy backend",
         command_ids: ["firebase-emulators-start", "firebase-deploy"],
         auth_prerequisite: true
+      }
+    ]
+  },
+  {
+    id: "wf_workspace_api_bootstrap",
+    slug: "workspace-api-bootstrap",
+    title: "Bootstrap Google Workspace Access",
+    description: "Install gws, complete OAuth setup, and verify Workspace API access before building automations.",
+    tags: ["workspace", "google", "automation", "productivity"],
+    estimated_minutes: 20,
+    created_at: now,
+    updated_at: now,
+    steps: [
+      {
+        step_number: 1,
+        cli_slug: "gws",
+        purpose: "Configure auth, validate scopes, and confirm discovery-backed API access.",
+        command_ids: [
+          "gws-auth-setup",
+          "gws-auth-login",
+          "gws-drive-files-list",
+          "gws-schema-drive-files-list"
+        ],
+        auth_prerequisite: false
       }
     ]
   }
