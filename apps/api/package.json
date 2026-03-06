@@ -16,7 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cli-me/shared-types": "^0.1.1",
+    "@cli-me/shared-types": "file:../../packages/shared-types",
     "@fastify/cors": "^10.0.2",
     "@types/pg": "^8.16.0",
     "fastify": "^5.2.1",

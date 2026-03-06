@@ -753,6 +753,43 @@ function directCliMentionBoost(queryTokens: Set<string>, slug: string) {
   return 0;
 }
 
+function normalizeSearchPhrase(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function cliIdentityPhraseBoost(query: string, cli: RegistryData['clis'][number]) {
+  const normalizedQuery = normalizeSearchPhrase(query);
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const normalizedName = normalizeSearchPhrase(cli.identity.name);
+  const normalizedPublisher = normalizeSearchPhrase(cli.identity.publisher);
+  const exactCandidates = new Set<string>([
+    normalizedName,
+    normalizeSearchPhrase(`${cli.identity.publisher} ${cli.identity.name}`),
+    normalizeSearchPhrase(`${cli.identity.name} cli`),
+  ]);
+
+  for (const candidate of exactCandidates) {
+    if (candidate && normalizedQuery === candidate) {
+      return SHARED_RANKING_CONFIG.exactNameBoost;
+    }
+  }
+
+  if (
+    (normalizedName && normalizedQuery.includes(normalizedName)) ||
+    (normalizedPublisher && normalizedQuery.includes(normalizedPublisher))
+  ) {
+    return SHARED_RANKING_CONFIG.partialNameBoost;
+  }
+
+  return 0;
+}
+
 type IntentScoreConfig = {
   matchedWeight: number;
   coverageWeight: number;
@@ -766,6 +803,8 @@ type IntentScoreConfig = {
 type SharedRankingConfig = {
   trustScoreDivisor: number;
   directMentionBoost: number;
+  exactNameBoost: number;
+  partialNameBoost: number;
 };
 
 type SearchRankingConfig = {
@@ -804,6 +843,8 @@ type DiscoverRankingConfig = {
 const SHARED_RANKING_CONFIG: SharedRankingConfig = {
   trustScoreDivisor: 100,
   directMentionBoost: 3.2,
+  exactNameBoost: 4.8,
+  partialNameBoost: 2.1,
 };
 
 const SEARCH_INTENT_SCORE_CONFIG: IntentScoreConfig = {
@@ -1058,12 +1099,14 @@ export class RegistryStore {
         const chainBoost = workflowBoostByCli.get(cli.identity.slug) ?? 0;
         const infraBoost = infrastructureIntentBoost(query, queryIntents, cli);
         const mentionBoost = directCliMentionBoost(termSet, cli.identity.slug);
+        const identityBoost = cliIdentityPhraseBoost(query, cli);
         const canonicalBoost = canonicalIntentAlignmentBoost(queryIntents, cli.identity.slug);
         const isWeakEvidenceAutoIndexed =
           cli.identity.verification_status === 'auto-indexed' &&
           matchedCliIntents === 0 &&
           canonicalBoost === 0 &&
           mentionBoost === 0 &&
+          identityBoost === 0 &&
           chainBoost <= SEARCH_RANKING_CONFIG.chainSignalThreshold &&
           infraBoost <= SEARCH_RANKING_CONFIG.infraSignalThreshold &&
           semantic.semanticScore < SEARCH_RANKING_CONFIG.strongSemanticReasonThreshold;
@@ -1093,6 +1136,7 @@ export class RegistryStore {
             semantic.semanticScore >= semanticSignalThreshold ||
             matchedCliIntents > 0 ||
             mentionBoost > 0 ||
+            identityBoost > 0 ||
             canonicalBoost > 0 ||
             chainBoost > SEARCH_RANKING_CONFIG.chainSignalThreshold ||
             infraBoost > SEARCH_RANKING_CONFIG.infraSignalThreshold);
@@ -1105,6 +1149,7 @@ export class RegistryStore {
           canonicalBoost +
           infraBoost +
           mentionBoost +
+          identityBoost +
           chainBoost -
           autoIndexedPenalty -
           shortSlugPenalty -
@@ -1136,6 +1181,7 @@ export class RegistryStore {
           intentAwareMinimumRelevance,
           reason:
             multiIntentReason ??
+            (identityBoost >= SHARED_RANKING_CONFIG.exactNameBoost ? 'Exact CLI name match' : null) ??
             (canonicalBoost > 0 ? 'Canonical CLI selected for detected task intent' : null) ??
             (semantic.semanticScore >= SEARCH_RANKING_CONFIG.strongSemanticReasonThreshold
               ? 'Strong semantic and workflow similarity match'
@@ -1232,12 +1278,14 @@ export class RegistryStore {
         const chainBoost = workflowBoostByCli.get(cli.identity.slug) ?? 0;
         const infraBoost = infrastructureIntentBoost(query, queryIntents, cli);
         const mentionBoost = directCliMentionBoost(queryTokens, cli.identity.slug);
+        const identityBoost = cliIdentityPhraseBoost(query, cli);
         const canonicalBoost = canonicalIntentAlignmentBoost(queryIntents, cli.identity.slug);
         const isWeakEvidenceAutoIndexed =
           cli.identity.verification_status === 'auto-indexed' &&
           matchedCliIntents === 0 &&
           canonicalBoost === 0 &&
           mentionBoost === 0 &&
+          identityBoost === 0 &&
           chainBoost <= DISCOVER_RANKING_CONFIG.chainSignalThreshold &&
           infraBoost <= DISCOVER_RANKING_CONFIG.infraSignalThreshold &&
           match.similarity < DISCOVER_RANKING_CONFIG.strongSemanticReasonThreshold;
@@ -1261,7 +1309,8 @@ export class RegistryStore {
             canonicalBoost > 0 ||
             chainBoost > DISCOVER_RANKING_CONFIG.chainSignalThreshold ||
             infraBoost > DISCOVER_RANKING_CONFIG.infraSignalThreshold ||
-            mentionBoost > 0);
+            mentionBoost > 0 ||
+            identityBoost > 0);
 
         return {
           cli: cli.identity,
@@ -1274,6 +1323,7 @@ export class RegistryStore {
             canonicalBoost +
             infraBoost +
             mentionBoost +
+            identityBoost +
             chainBoost -
             autoIndexedPenalty -
             shortSlugPenalty -
@@ -1283,6 +1333,8 @@ export class RegistryStore {
             (workflowBoostByCli.get(cli.identity.slug) ?? 0) >
               DISCOVER_RANKING_CONFIG.multiIntentReasonChainThreshold
               ? 'Embedding and multi-intent workflow coverage match'
+              : identityBoost >= SHARED_RANKING_CONFIG.exactNameBoost
+                ? 'Exact CLI name match'
               : match.similarity >= DISCOVER_RANKING_CONFIG.strongSemanticReasonThreshold
                 ? 'Embedding similarity match'
                 : 'Semantic fallback match',

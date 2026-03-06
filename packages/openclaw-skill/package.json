@@ -13,7 +13,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@cli-me/shared-types": "^0.1.1"
+    "@cli-me/shared-types": "file:../shared-types"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

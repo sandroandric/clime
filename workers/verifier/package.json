@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cli-me/shared-types": "^0.1.1"
+    "@cli-me/shared-types": "file:../../packages/shared-types"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

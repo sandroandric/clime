@@ -70,4 +70,12 @@ describe("discover quality", () => {
       )
     ).toBe(false);
   });
+
+  it("boosts exact curated CLI name matches above generic keyword noise", async () => {
+    const store = await RegistryStore.create(createSeedData());
+    const results = await store.discoverClis("google workspace cli", 5);
+    const slugs = results.map((entry) => entry.cli.slug);
+
+    expect(slugs[0]).toBe("gws");
+  });
 });
