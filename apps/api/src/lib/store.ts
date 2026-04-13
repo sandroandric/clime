@@ -5,8 +5,11 @@ import {
   type ApiKeyCreateRequest,
   type ApiKeyCreateResponse,
   type ApiKeyUsageSummary,
+  type AuthGuide,
   type ChangeFeedEvent,
+  type CliProfile,
   type CliSummary,
+  type CommandEntry,
   type InstallInstruction,
   type ClaimVerificationMethod,
   type CommunitySubmission,
@@ -155,6 +158,233 @@ function publisherSlug(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function cliSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function normalizeSubmissionString(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeSubmissionStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => normalizeSubmissionString(entry))
+      .filter((entry): entry is string => Boolean(entry));
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function inferPublisherFromRepository(repository: string) {
+  try {
+    const url = new URL(repository);
+    const [owner] = url.pathname.split('/').filter(Boolean);
+    return owner ? owner.trim() : 'Community';
+  } catch {
+    return 'Community';
+  }
+}
+
+function inferBinaryName(slug: string, installCommand: string) {
+  const tokens = installCommand.split(/\s+/).filter(Boolean);
+  if (tokens[0] === 'cargo' && tokens[1] === 'install' && tokens[2]) {
+    return tokens[2].replace(/^@/, '').split('/').pop() ?? slug;
+  }
+  if (tokens[0] === 'npm') {
+    const packageName = [...tokens]
+      .reverse()
+      .find((token) => !token.startsWith('-') && token !== 'install' && token !== 'npm');
+    if (packageName) {
+      const unscoped = packageName.replace(/^@/, '').split('/').pop() ?? slug;
+      return unscoped.replace(/-cli$/i, '') || slug;
+    }
+  }
+  if (tokens[0] === 'pip' || tokens[0] === 'pip3') {
+    const packageName = [...tokens]
+      .reverse()
+      .find((token) => !token.startsWith('-') && token !== 'install' && token !== 'pip');
+    if (packageName) {
+      return packageName.replace(/[-_]?cli$/i, '').replace(/_/g, '-') || slug;
+    }
+  }
+  return slug;
+}
+
+function inferInstallInstructions(command: string): InstallInstruction[] {
+  const trimmed = command.trim();
+  if (!trimmed) {
+    return [];
+  }
+  return [
+    {
+      os: 'macos',
+      package_manager: trimmed.split(/\s+/)[0] ?? 'unknown',
+      command: trimmed,
+      dependencies: [],
+    },
+    {
+      os: 'linux',
+      package_manager: trimmed.split(/\s+/)[0] ?? 'unknown',
+      command: trimmed,
+      dependencies: [],
+    },
+  ];
+}
+
+function defaultTokenRefresh(authType: CliProfile['auth']['auth_type']) {
+  switch (authType) {
+    case 'api_key':
+      return 'Rotate the provider API key in the upstream dashboard when it expires or is revoked.';
+    case 'oauth':
+      return 'Refresh is handled by the provider login flow; rerun the upstream auth command when access expires.';
+    case 'login_command':
+      return 'Rerun the upstream login command when the saved session expires.';
+    case 'config_file':
+      return 'Refresh or rotate the credentials stored in the upstream config file when they expire.';
+    case 'none':
+    default:
+      return 'No account credential is required for default usage.';
+  }
+}
+
+function defaultAuthGuide(
+  authType: CliProfile['auth']['auth_type'],
+  binaryName: string,
+  environmentVariables: string[],
+): AuthGuide {
+  const helpCommand = `${binaryName} --help`;
+  if (authType === 'api_key') {
+    return {
+      auth_type: authType,
+      setup_steps: [
+        {
+          order: 1,
+          instruction:
+            'Read the upstream repository auth section and export the credential expected by this CLI.',
+        },
+        {
+          order: 2,
+          instruction: 'Verify the binary is installed and inspect auth-related flags.',
+          command: helpCommand,
+        },
+      ],
+      environment_variables: environmentVariables,
+      token_refresh: defaultTokenRefresh(authType),
+      scopes: [],
+    };
+  }
+  if (authType === 'oauth' || authType === 'login_command') {
+    return {
+      auth_type: authType,
+      setup_steps: [
+        {
+          order: 1,
+          instruction: 'Run the upstream login/auth command documented by the project before executing API calls.',
+        },
+        {
+          order: 2,
+          instruction: 'Inspect the installed binary for available commands and flags.',
+          command: helpCommand,
+        },
+      ],
+      environment_variables: environmentVariables,
+      token_refresh: defaultTokenRefresh(authType),
+      scopes: [],
+    };
+  }
+  if (authType === 'config_file') {
+    return {
+      auth_type: authType,
+      setup_steps: [
+        {
+          order: 1,
+          instruction:
+            'Create or update the upstream config file expected by this CLI before running authenticated commands.',
+        },
+        {
+          order: 2,
+          instruction: 'Inspect the installed binary for available commands and flags.',
+          command: helpCommand,
+        },
+      ],
+      environment_variables: environmentVariables,
+      token_refresh: defaultTokenRefresh(authType),
+      scopes: [],
+    };
+  }
+
+  return {
+    auth_type: 'none',
+    setup_steps: [
+      {
+        order: 1,
+        instruction: 'Inspect the installed binary for available commands and flags.',
+        command: helpCommand,
+      },
+    ],
+    environment_variables: environmentVariables,
+    token_refresh: defaultTokenRefresh('none'),
+    scopes: [],
+  };
+}
+
+function buildSubmissionCommands(
+  slug: string,
+  binaryName: string,
+  categoryTags: string[],
+  explicitExamples: string[],
+): CommandEntry[] {
+  const commands = new Map<string, CommandEntry>();
+  const examples = explicitExamples.length > 0 ? explicitExamples : [`${binaryName} --help`];
+
+  for (const [index, command] of examples.entries()) {
+    commands.set(command, {
+      id: `${slug}-submission-cmd-${index + 1}`,
+      cli_slug: slug,
+      command,
+      description: index === 0 ? 'Community-submitted example command' : 'Additional example command',
+      required_parameters: [],
+      optional_parameters: [],
+      examples: [command],
+      expected_output: 'Structured CLI output when available; otherwise standard terminal output.',
+      common_errors: [],
+      workflow_context: categoryTags,
+    });
+  }
+
+  for (const [suffix, command, description, expectedOutput] of [
+    ['help', `${binaryName} --help`, 'Show the available commands and flags', 'Usage text with subcommands and flags.'],
+    ['version', `${binaryName} --version`, 'Print the installed CLI version', 'A version string or build identifier.'],
+  ] as const) {
+    if (commands.has(command)) {
+      continue;
+    }
+    commands.set(command, {
+      id: `${slug}-submission-cmd-${suffix}`,
+      cli_slug: slug,
+      command,
+      description,
+      required_parameters: [],
+      optional_parameters: [],
+      examples: [command],
+      expected_output: expectedOutput,
+      common_errors: [],
+      workflow_context: categoryTags,
+    });
+  }
+
+  return [...commands.values()];
 }
 
 function topMatchingCommands(cli: RegistryData['clis'][number], query: string, limit = 3) {
@@ -1646,12 +1876,162 @@ export class RegistryStore {
       },
     };
 
+    let publishedCli: CliProfile | undefined;
+    let listingVersion: ListingVersion | undefined;
+    let listingChange: ChangeFeedEvent | undefined;
+    if (payload.status === 'approved' && submission.type === 'new_cli') {
+      const publication = this.buildCliProfileFromApprovedSubmission(submission, reviewedAt);
+      publishedCli = publication.cli;
+      listingVersion = publication.listingVersion;
+      listingChange = {
+        id: `chg_${nanoid(10)}`,
+        kind: 'listing_updated',
+        entity_id: publishedCli.identity.slug,
+        occurred_at: reviewedAt,
+        payload: {
+          version_number: listingVersion.version_number,
+          source: 'submission_approval',
+          submission_id: submission.id,
+        },
+      };
+    }
+
     if (this.persistence) {
-      await this.persistence.persistSubmission(submission, change);
+      if (publishedCli && listingVersion && listingChange) {
+        await this.persistence.publishApprovedSubmission(
+          submission,
+          change,
+          publishedCli,
+          listingVersion,
+          listingChange,
+        );
+      } else {
+        await this.persistence.persistSubmission(submission, change);
+      }
+    }
+
+    if (publishedCli && listingVersion && listingChange) {
+      const existingIndex = this.data.clis.findIndex(
+        (entry) => entry.identity.slug === publishedCli.identity.slug,
+      );
+      if (existingIndex >= 0) {
+        this.data.clis[existingIndex] = publishedCli;
+      } else {
+        this.data.clis.push(publishedCli);
+      }
+      this.data.listingVersions = this.data.listingVersions.filter(
+        (entry) => entry.cli_slug !== listingVersion.cli_slug,
+      );
+      this.data.listingVersions.push(listingVersion);
+      this.semantic = new SemanticSearchEngine(this.data.clis, this.data.workflows);
+      this.data.changes.unshift(listingChange);
     }
 
     this.data.changes.unshift(change);
     return submission;
+  }
+
+  private buildCliProfileFromApprovedSubmission(
+    submission: CommunitySubmission,
+    reviewedAt: string,
+  ): { cli: CliProfile; listingVersion: ListingVersion } {
+    const content =
+      submission.content && typeof submission.content === 'object'
+        ? (submission.content as Record<string, unknown>)
+        : {};
+    const name = normalizeSubmissionString(content.name);
+    const repository = normalizeSubmissionString(content.repository);
+    const description = normalizeSubmissionString(content.description);
+    const installCommand = normalizeSubmissionString(content.install);
+
+    if (!name || !repository || !description || !installCommand) {
+      throw new Error(
+        `Approved new_cli submission ${submission.id} is missing required listing fields.`,
+      );
+    }
+
+    const slug =
+      normalizeSubmissionString(content.slug) ??
+      normalizeSubmissionString(submission.target_cli_slug) ??
+      cliSlug(name);
+    if (!slug) {
+      throw new Error(`Approved new_cli submission ${submission.id} does not resolve to a valid slug.`);
+    }
+
+    const website = normalizeSubmissionString(content.website) ?? repository;
+    const publisher =
+      canonicalPublisherName(
+        normalizeSubmissionString(content.publisher) ?? inferPublisherFromRepository(repository),
+      ) || 'Community';
+    const authTypeRaw = normalizeSubmissionString(content.auth_type);
+    const authType: CliProfile['auth']['auth_type'] =
+      authTypeRaw === 'api_key' ||
+      authTypeRaw === 'oauth' ||
+      authTypeRaw === 'login_command' ||
+      authTypeRaw === 'config_file' ||
+      authTypeRaw === 'none'
+        ? authTypeRaw
+        : 'none';
+    const categoryTags = [
+      ...new Set(
+        normalizeSubmissionStringArray(content.categories)
+          .map((entry) => entry.toLowerCase().trim())
+          .filter(Boolean)
+          .concat(['community-submitted']),
+      ),
+    ];
+    const binaryName =
+      normalizeSubmissionString(content.binary) ?? inferBinaryName(slug, installCommand);
+    const environmentVariables = normalizeSubmissionStringArray(
+      content.environment_variables ?? content.env_vars,
+    );
+    const explicitExamples = normalizeSubmissionStringArray(
+      content.command_examples ?? content.commands,
+    );
+
+    const existingVersion = this.data.listingVersions.find((entry) => entry.cli_slug === slug);
+    const versionNumber = (existingVersion?.version_number ?? 0) + 1;
+    const authGuide = defaultAuthGuide(authType, binaryName, environmentVariables);
+    const listingVersion: ListingVersion = {
+      id: `lv_${slug}_${versionNumber}`,
+      cli_slug: slug,
+      version_number: versionNumber,
+      changed_fields: ['identity', 'install', 'auth', 'commands'],
+      changelog: 'Approved community submission promoted into the live registry.',
+      updated_at: reviewedAt,
+    };
+    const cli: CliProfile = {
+      identity: {
+        slug,
+        name,
+        publisher,
+        description,
+        category_tags: categoryTags.length > 0 ? categoryTags : ['community-submitted'],
+        website,
+        repository,
+        verification_status: 'community-curated',
+        latest_version: normalizeSubmissionString(content.latest_version) ?? 'untracked',
+        last_updated: reviewedAt,
+        last_verified: reviewedAt,
+        popularity_score: 0,
+        trust_score: 60,
+        permission_scope: [],
+        compatibility: [],
+      },
+      install: inferInstallInstructions(installCommand),
+      auth: {
+        ...authGuide,
+        token_refresh:
+          normalizeSubmissionString(content.token_refresh) ?? authGuide.token_refresh,
+      },
+      commands: buildSubmissionCommands(slug, binaryName, categoryTags, explicitExamples),
+      listing_version: listingVersion,
+    };
+
+    return {
+      cli,
+      listingVersion,
+    };
   }
 
   async createPublisherClaim(payload: PublisherClaimRequest): Promise<PublisherClaim> {

@@ -108,4 +108,46 @@ describe("postgres persistence", () => {
     const ranking = await second.getRanking("used");
     expect(ranking.entries.length).toBeGreaterThan(0);
   }, 20000);
+
+  it("publishes approved new_cli submissions into live listings immediately", async () => {
+    const seed = createMinimalSeedData();
+    const first = await RegistryStore.create(seed, persistence);
+
+    const submission = await first.addSubmission({
+      type: "new_cli",
+      submitter: "tester",
+      content: {
+        name: "Acme CLI",
+        repository: "https://github.com/acme/acme-cli",
+        description: "Community-submitted deployment helper for Acme services",
+        install: "npm install -g acme-cli",
+        publisher: "Acme",
+        auth_type: "api_key",
+        categories: ["deploy", "automation"]
+      }
+    });
+
+    const approved = await first.reviewSubmission(submission.id, {
+      status: "approved",
+      reviewer: "admin",
+      review_notes: "Looks legitimate"
+    });
+
+    expect(approved?.status).toBe("approved");
+
+    const live = first.getCli("acme-cli");
+    expect(live?.identity.verification_status).toBe("community-curated");
+    expect(live?.install.some((entry) => entry.command === "npm install -g acme-cli")).toBe(true);
+    expect(live?.commands.some((entry) => entry.command === "acme --help")).toBe(true);
+
+    const second = await RegistryStore.create(seed, persistence);
+    const reloaded = second.getCli("acme-cli");
+
+    expect(reloaded?.identity.name).toBe("Acme CLI");
+    expect(reloaded?.identity.publisher).toBe("Acme");
+    expect(reloaded?.listing_version?.version_number).toBe(1);
+
+    const results = await second.searchClis("acme deploy automation", 5);
+    expect(results.some((entry) => entry.cli.slug === "acme-cli")).toBe(true);
+  }, 20000);
 });

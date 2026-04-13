@@ -68,6 +68,13 @@ function cosineSimilarity(a: number[], b: number[]) {
 export interface PersistenceAdapter {
   loadOrSeed(seed: RegistryData): Promise<RegistryData>;
   persistSubmission(submission: CommunitySubmission, change: ChangeFeedEvent): Promise<void>;
+  publishApprovedSubmission(
+    submission: CommunitySubmission,
+    submissionChange: ChangeFeedEvent,
+    cli: CliProfile,
+    listingVersion: ListingVersion,
+    listingChange: ChangeFeedEvent,
+  ): Promise<void>;
   persistPublisherClaim(claim: PublisherClaim, change: ChangeFeedEvent): Promise<PublisherClaim>;
   updatePublisherClaim(claim: PublisherClaim): Promise<void>;
   persistUsage(event: UsageEvent): Promise<void>;
@@ -199,38 +206,47 @@ export class PostgresPersistence implements PersistenceAdapter {
 
   async persistSubmission(submission: CommunitySubmission, change: ChangeFeedEvent) {
     await this.transaction(async (client) => {
+      await this.upsertSubmission(client, submission);
+
+      await this.insertChangeEvent(client, change);
+    });
+  }
+
+  async publishApprovedSubmission(
+    submission: CommunitySubmission,
+    submissionChange: ChangeFeedEvent,
+    cli: CliProfile,
+    listingVersion: ListingVersion,
+    listingChange: ChangeFeedEvent,
+  ) {
+    await this.transaction(async (client) => {
+      await this.upsertSubmission(client, submission);
+      await this.upsertCliProfile(client, cli, true);
+      await this.upsertCliEmbedding(client, cli);
       await client.query(
         `
-        INSERT INTO community_submissions
-          (id, type, submitter, target_cli_slug, content, status, created_at, reviewed_at, reviewer, review_notes)
-        VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10)
+        INSERT INTO listing_versions (id, cli_slug, version_number, changed_fields, changelog, updated_at)
+        VALUES ($1,$2,$3,$4::jsonb,$5,$6)
         ON CONFLICT (id) DO UPDATE
         SET
-          type = EXCLUDED.type,
-          submitter = EXCLUDED.submitter,
-          target_cli_slug = EXCLUDED.target_cli_slug,
-          content = EXCLUDED.content,
-          status = EXCLUDED.status,
-          created_at = EXCLUDED.created_at,
-          reviewed_at = EXCLUDED.reviewed_at,
-          reviewer = EXCLUDED.reviewer,
-          review_notes = EXCLUDED.review_notes
+          cli_slug = EXCLUDED.cli_slug,
+          version_number = EXCLUDED.version_number,
+          changed_fields = EXCLUDED.changed_fields,
+          changelog = EXCLUDED.changelog,
+          updated_at = EXCLUDED.updated_at
       `,
         [
-          submission.id,
-          submission.type,
-          submission.submitter,
-          submission.target_cli_slug ?? null,
-          JSON.stringify(submission.content),
-          submission.status,
-          submission.created_at,
-          submission.reviewed_at ?? null,
-          submission.reviewer ?? null,
-          submission.review_notes ?? null,
+          listingVersion.id,
+          listingVersion.cli_slug,
+          listingVersion.version_number,
+          JSON.stringify(listingVersion.changed_fields),
+          listingVersion.changelog,
+          listingVersion.updated_at,
         ],
       );
 
-      await this.insertChangeEvent(client, change);
+      await this.insertChangeEvent(client, submissionChange);
+      await this.insertChangeEvent(client, listingChange);
     });
   }
 
@@ -1276,6 +1292,39 @@ export class PostgresPersistence implements PersistenceAdapter {
         change.entity_id,
         change.occurred_at,
         JSON.stringify(change.payload),
+      ],
+    );
+  }
+
+  private async upsertSubmission(client: PoolClient, submission: CommunitySubmission) {
+    await client.query(
+      `
+      INSERT INTO community_submissions
+        (id, type, submitter, target_cli_slug, content, status, created_at, reviewed_at, reviewer, review_notes)
+      VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10)
+      ON CONFLICT (id) DO UPDATE
+      SET
+        type = EXCLUDED.type,
+        submitter = EXCLUDED.submitter,
+        target_cli_slug = EXCLUDED.target_cli_slug,
+        content = EXCLUDED.content,
+        status = EXCLUDED.status,
+        created_at = EXCLUDED.created_at,
+        reviewed_at = EXCLUDED.reviewed_at,
+        reviewer = EXCLUDED.reviewer,
+        review_notes = EXCLUDED.review_notes
+    `,
+      [
+        submission.id,
+        submission.type,
+        submission.submitter,
+        submission.target_cli_slug ?? null,
+        JSON.stringify(submission.content),
+        submission.status,
+        submission.created_at,
+        submission.reviewed_at ?? null,
+        submission.reviewer ?? null,
+        submission.review_notes ?? null,
       ],
     );
   }
