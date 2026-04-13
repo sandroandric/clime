@@ -86,6 +86,18 @@ export interface PersistenceAdapter {
   createApiKey(payload: ApiKeyCreateRequest): Promise<ApiKeyCreateResponse>;
   apiKeyOwner(apiKey: string): Promise<{ owner_type: string; owner_id?: string } | null>;
   apiKeyUsageSummary(apiKey: string): Promise<ApiKeyUsageSummary>;
+  globalUsageSummary(): Promise<{
+    total_requests: number;
+    distinct_api_keys: number;
+    active_api_keys_24h: number;
+    active_api_keys_7d: number;
+    active_api_keys_30d: number;
+    owner_types: Array<{ owner_type: string; count: number }>;
+    top_endpoints: Array<{ endpoint: string; count: number }>;
+    top_clis: Array<{ cli_slug: string; count: number }>;
+    top_queries: Array<{ query: string; count: number }>;
+    last_seen?: string;
+  }>;
   persistCliTelemetry(
     cli: CliProfile,
     listingVersion: ListingVersion,
@@ -549,6 +561,102 @@ export class PostgresPersistence implements PersistenceAdapter {
       api_key_hash: hashed,
       total_requests: usage.rows.length,
       endpoints: [...endpointCounts.entries()]
+        .map(([endpoint, count]) => ({ endpoint, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_clis: [...cliCounts.entries()]
+        .map(([cli_slug, count]) => ({ cli_slug, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_queries: [...queryCounts.entries()]
+        .map(([query, count]) => ({ query, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      last_seen: lastSeen,
+    };
+  }
+
+  async globalUsageSummary() {
+    const usage = await this.pool.query<{
+      endpoint: string;
+      cli_slug: string | null;
+      query: string | null;
+      created_at: string;
+      key_hash: string | null;
+      owner_type: string | null;
+    }>(
+      `
+      SELECT
+        ue.endpoint,
+        ue.cli_slug,
+        ue.query,
+        ue.created_at,
+        ak.key_hash,
+        ak.owner_type
+      FROM usage_events ue
+      LEFT JOIN api_keys ak ON ak.id = ue.api_key_id
+      ORDER BY ue.created_at DESC
+      LIMIT 20000
+    `,
+    );
+
+    const endpointCounts = new Map<string, number>();
+    const cliCounts = new Map<string, number>();
+    const queryCounts = new Map<string, number>();
+    const ownerTypeCounts = new Map<string, number>();
+    const distinctKeys = new Set<string>();
+    const active24h = new Set<string>();
+    const active7d = new Set<string>();
+    const active30d = new Set<string>();
+    const now = Date.now();
+    let lastSeen: string | undefined;
+
+    for (const row of usage.rows) {
+      endpointCounts.set(row.endpoint, (endpointCounts.get(row.endpoint) ?? 0) + 1);
+      if (row.cli_slug) {
+        cliCounts.set(row.cli_slug, (cliCounts.get(row.cli_slug) ?? 0) + 1);
+      }
+      if (row.query) {
+        const normalized = row.query.trim().toLowerCase();
+        if (normalized) {
+          queryCounts.set(normalized, (queryCounts.get(normalized) ?? 0) + 1);
+        }
+      }
+      if (row.owner_type) {
+        ownerTypeCounts.set(row.owner_type, (ownerTypeCounts.get(row.owner_type) ?? 0) + 1);
+      }
+      if (row.key_hash) {
+        distinctKeys.add(row.key_hash);
+        const createdAtMs = Date.parse(row.created_at);
+        if (!Number.isNaN(createdAtMs)) {
+          const ageMs = now - createdAtMs;
+          if (ageMs <= 24 * 60 * 60 * 1000) {
+            active24h.add(row.key_hash);
+          }
+          if (ageMs <= 7 * 24 * 60 * 60 * 1000) {
+            active7d.add(row.key_hash);
+          }
+          if (ageMs <= 30 * 24 * 60 * 60 * 1000) {
+            active30d.add(row.key_hash);
+          }
+        }
+      }
+      if (!lastSeen || Date.parse(row.created_at) > Date.parse(lastSeen)) {
+        lastSeen = toIso(row.created_at);
+      }
+    }
+
+    return {
+      total_requests: usage.rows.length,
+      distinct_api_keys: distinctKeys.size,
+      active_api_keys_24h: active24h.size,
+      active_api_keys_7d: active7d.size,
+      active_api_keys_30d: active30d.size,
+      owner_types: [...ownerTypeCounts.entries()]
+        .map(([owner_type, count]) => ({ owner_type, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_endpoints: [...endpointCounts.entries()]
         .map(([endpoint, count]) => ({ endpoint, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 20),

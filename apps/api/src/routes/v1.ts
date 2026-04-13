@@ -389,6 +389,11 @@ export function registerV1Routes(
     return success(store.usageSummary());
   });
 
+  app.get('/v1/admin/usage-summary', async (request) => {
+    ensureAdmin(request);
+    return success(await store.globalUsageSummary());
+  });
+
   app.post('/v1/api-keys/create', async (request) => {
     const payload = assertSchema(ApiKeyCreateRequestSchema.safeParse(request.body));
     return success(await store.createApiKey(payload));

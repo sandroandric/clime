@@ -548,7 +548,9 @@ describe('api', () => {
         submitter: 'test-suite',
         content: {
           name: 'moderated-cli',
+          repository: 'https://github.com/acme/moderated-cli',
           description: 'moderation flow test',
+          install: 'npm install -g moderated-cli',
         },
       },
     });
@@ -577,6 +579,37 @@ describe('api', () => {
     expect(reviewed.statusCode).toBe(200);
     expect(reviewed.json().data.status).toBe('approved');
     expect(reviewed.json().data.reviewer).toBe('admin-reviewer');
+  });
+
+  it('rejects approval when a new_cli submission cannot become a real listing', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/submissions',
+      headers: apiKeyHeader,
+      payload: {
+        type: 'new_cli',
+        submitter: 'test-suite',
+        content: {
+          name: 'incomplete-cli',
+          description: 'missing repository and install',
+        },
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    const submissionId = created.json().data.id as string;
+
+    const reviewed = await app.inject({
+      method: 'POST',
+      url: `/v1/submissions/${submissionId}/review`,
+      headers: apiKeyHeader,
+      payload: {
+        status: 'approved',
+        reviewer: 'admin-reviewer',
+      },
+    });
+
+    expect(reviewed.statusCode).toBe(400);
+    expect(reviewed.json().error.code).toBe('SUBMISSION_NOT_PUBLISHABLE');
   });
 
   it('supports manual publisher claim approve/reject with admin-only access', async () => {
@@ -750,6 +783,70 @@ describe('api', () => {
     });
     expect(blockedUsage.statusCode).toBe(403);
     expect(blockedUsage.json().error.code).toBe('FORBIDDEN_API_KEY_SCOPE');
+  });
+
+  it('returns a global admin-only telemetry summary', async () => {
+    const issued = await app.inject({
+      method: 'POST',
+      url: '/v1/api-keys/create',
+      headers: apiKeyHeader,
+      payload: {
+        owner_type: 'agent',
+        owner_id: 'summary-agent',
+      },
+    });
+    expect(issued.statusCode).toBe(200);
+    const issuedKey = issued.json().data.api_key as string;
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/discover',
+      headers: { 'x-api-key': issuedKey },
+      payload: { query: 'deploy next.js app', limit: 3 },
+    });
+
+    await app.inject({
+      method: 'GET',
+      url: '/v1/clis/vercel/install',
+      headers: { 'x-api-key': issuedKey },
+    });
+
+    const blocked = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/usage-summary',
+      headers: { 'x-api-key': issuedKey },
+    });
+    expect(blocked.statusCode).toBe(403);
+    expect(blocked.json().error.code).toBe('ADMIN_REQUIRED');
+
+    const summary = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/usage-summary',
+      headers: apiKeyHeader,
+    });
+    expect(summary.statusCode).toBe(200);
+    const body = summary.json().data as {
+      total_requests: number;
+      distinct_api_keys: number;
+      active_api_keys_24h: number;
+      active_api_keys_7d: number;
+      active_api_keys_30d: number;
+      owner_types: Array<{ owner_type: string; count: number }>;
+      top_endpoints: Array<{ endpoint: string; count: number }>;
+      top_clis: Array<{ cli_slug: string; count: number }>;
+      top_queries: Array<{ query: string; count: number }>;
+      last_seen?: string;
+    };
+
+    expect(body.total_requests).toBeGreaterThan(0);
+    expect(body.distinct_api_keys).toBeGreaterThan(0);
+    expect(body.active_api_keys_24h).toBeGreaterThan(0);
+    expect(body.active_api_keys_7d).toBeGreaterThan(0);
+    expect(body.active_api_keys_30d).toBeGreaterThan(0);
+    expect(body.owner_types.some((entry) => entry.owner_type === 'agent')).toBe(true);
+    expect(body.top_endpoints.some((entry) => entry.endpoint === '/v1/discover')).toBe(true);
+    expect(body.top_clis.some((entry) => entry.cli_slug === 'vercel')).toBe(true);
+    expect(body.top_queries.some((entry) => entry.query === 'deploy next.js app')).toBe(true);
   });
 
   it('returns publisher analytics derived from real telemetry', async () => {

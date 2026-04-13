@@ -26,10 +26,24 @@ import {
   type UsageEvent,
   normalizeSha256Checksum,
 } from '@cli-me/shared-types';
+import { ApiError } from './errors.js';
 import { computeRanking } from './ranking.js';
 import type { PersistenceAdapter } from './persistence.js';
 import { SemanticSearchEngine } from './semantic.js';
 import type { RegistryData } from './types.js';
+
+interface GlobalUsageSummary {
+  total_requests: number;
+  distinct_api_keys: number;
+  active_api_keys_24h: number;
+  active_api_keys_7d: number;
+  active_api_keys_30d: number;
+  owner_types: Array<{ owner_type: string; count: number }>;
+  top_endpoints: Array<{ endpoint: string; count: number }>;
+  top_clis: Array<{ cli_slug: string; count: number }>;
+  top_queries: Array<{ query: string; count: number }>;
+  last_seen?: string;
+}
 
 function tokenize(input: string) {
   const stopWords = new Set([
@@ -1945,8 +1959,10 @@ export class RegistryStore {
     const installCommand = normalizeSubmissionString(content.install);
 
     if (!name || !repository || !description || !installCommand) {
-      throw new Error(
-        `Approved new_cli submission ${submission.id} is missing required listing fields.`,
+      throw new ApiError(
+        'SUBMISSION_NOT_PUBLISHABLE',
+        `Submission ${submission.id} is missing required fields for a live CLI listing.`,
+        400,
       );
     }
 
@@ -1955,7 +1971,11 @@ export class RegistryStore {
       normalizeSubmissionString(submission.target_cli_slug) ??
       cliSlug(name);
     if (!slug) {
-      throw new Error(`Approved new_cli submission ${submission.id} does not resolve to a valid slug.`);
+      throw new ApiError(
+        'SUBMISSION_NOT_PUBLISHABLE',
+        `Submission ${submission.id} does not resolve to a valid CLI slug.`,
+        400,
+      );
     }
 
     const website = normalizeSubmissionString(content.website) ?? repository;
@@ -2224,6 +2244,83 @@ export class RegistryStore {
     return this.data.usageEvents.slice(0, 100);
   }
 
+  async globalUsageSummary(): Promise<GlobalUsageSummary> {
+    if (this.persistence) {
+      return this.persistence.globalUsageSummary();
+    }
+
+    const endpointCounts = new Map<string, number>();
+    const cliCounts = new Map<string, number>();
+    const queryCounts = new Map<string, number>();
+    const ownerTypeCounts = new Map<string, number>();
+    const distinctKeys = new Set<string>();
+    const active24h = new Set<string>();
+    const active7d = new Set<string>();
+    const active30d = new Set<string>();
+    const now = Date.now();
+    let lastSeen: string | undefined;
+
+    for (const event of this.data.usageEvents) {
+      endpointCounts.set(event.endpoint, (endpointCounts.get(event.endpoint) ?? 0) + 1);
+      if (event.cli_slug) {
+        cliCounts.set(event.cli_slug, (cliCounts.get(event.cli_slug) ?? 0) + 1);
+      }
+      if (event.query?.trim()) {
+        const normalized = event.query.trim().toLowerCase();
+        queryCounts.set(normalized, (queryCounts.get(normalized) ?? 0) + 1);
+      }
+
+      distinctKeys.add(event.api_key);
+      const ownerType = this.issuedApiKeys.get(event.api_key)?.owner_type;
+      if (ownerType) {
+        ownerTypeCounts.set(ownerType, (ownerTypeCounts.get(ownerType) ?? 0) + 1);
+      }
+
+      const createdAtMs = Date.parse(event.created_at);
+      if (!Number.isNaN(createdAtMs)) {
+        const ageMs = now - createdAtMs;
+        if (ageMs <= 24 * 60 * 60 * 1000) {
+          active24h.add(event.api_key);
+        }
+        if (ageMs <= 7 * 24 * 60 * 60 * 1000) {
+          active7d.add(event.api_key);
+        }
+        if (ageMs <= 30 * 24 * 60 * 60 * 1000) {
+          active30d.add(event.api_key);
+        }
+      }
+
+      if (!lastSeen || Date.parse(event.created_at) > Date.parse(lastSeen)) {
+        lastSeen = event.created_at;
+      }
+    }
+
+    return {
+      total_requests: this.data.usageEvents.length,
+      distinct_api_keys: distinctKeys.size,
+      active_api_keys_24h: active24h.size,
+      active_api_keys_7d: active7d.size,
+      active_api_keys_30d: active30d.size,
+      owner_types: [...ownerTypeCounts.entries()]
+        .map(([owner_type, count]) => ({ owner_type, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_endpoints: [...endpointCounts.entries()]
+        .map(([endpoint, count]) => ({ endpoint, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_clis: [...cliCounts.entries()]
+        .map(([cli_slug, count]) => ({ cli_slug, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      top_queries: [...queryCounts.entries()]
+        .map(([query, count]) => ({ query, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      last_seen: lastSeen,
+    };
+  }
+
   publisherAnalytics(publisher?: string): PublisherAnalytics[] {
     const clisBySlug = new Map(this.data.clis.map((cli) => [cli.identity.slug, cli] as const));
     const byPublisher = new Map<
@@ -2393,10 +2490,12 @@ export class RegistryStore {
     }
 
     const apiKey = `clime_${nanoid(28)}`;
-    this.issuedApiKeys.set(apiKey, {
+    const owner = {
       owner_type: payload.owner_type,
       owner_id: payload.owner_id,
-    });
+    };
+    this.issuedApiKeys.set(apiKey, owner);
+    this.issuedApiKeys.set(hashApiKey(apiKey), owner);
 
     return {
       api_key: apiKey,
