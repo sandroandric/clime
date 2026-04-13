@@ -1,5 +1,6 @@
 import type { CliProfile, WorkflowChain } from "@cli-me/shared-types";
 import type { RegistryData } from "../lib/types.js";
+import { approvedSubmissionCliAdditions } from "./approved-submissions.js";
 import { curatedCliAdditions, curatedWorkflowAdditions } from "./curated-additions.js";
 import { generatedCuratedClis, generatedCuratedWorkflows } from "./curated-generated.js";
 
@@ -684,7 +685,12 @@ function enrichCliProfile(cli: CliProfile): CliProfile {
 }
 
 export function createSeedData(): RegistryData {
-  const allClis = mergeClis(clis, curatedCliAdditions, generatedCuratedClis)
+  const allClis = mergeClis(
+    clis,
+    curatedCliAdditions,
+    approvedSubmissionCliAdditions,
+    generatedCuratedClis,
+  )
     .filter((cli) => !DISALLOWED_SEED_SLUGS.has(cli.identity.slug))
     .map(enrichCliProfile);
 
