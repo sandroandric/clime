@@ -33,17 +33,35 @@ import { SemanticSearchEngine } from './semantic.js';
 import type { RegistryData } from './types.js';
 
 interface GlobalUsageSummary {
-  total_requests: number;
-  distinct_api_keys: number;
-  active_api_keys_24h: number;
-  active_api_keys_7d: number;
-  active_api_keys_30d: number;
-  owner_types: Array<{ owner_type: string; count: number }>;
-  top_endpoints: Array<{ endpoint: string; count: number }>;
-  top_clis: Array<{ cli_slug: string; count: number }>;
-  top_queries: Array<{ query: string; count: number }>;
-  last_seen?: string;
+  all_time: {
+    total_requests: number;
+    distinct_api_keys: number;
+    active_api_keys_24h: number;
+    active_api_keys_7d: number;
+    active_api_keys_30d: number;
+    owner_types: Array<{ owner_type: string; count: number }>;
+    top_endpoints: Array<{ endpoint: string; count: number }>;
+    top_clis: Array<{ cli_slug: string; count: number }>;
+    top_queries: Array<{ query: string; count: number }>;
+    last_seen?: string;
+  };
+  retained_window: {
+    total_requests: number;
+    distinct_api_keys: number;
+    active_api_keys_24h: number;
+    active_api_keys_7d: number;
+    active_api_keys_30d: number;
+    owner_types: Array<{ owner_type: string; count: number }>;
+    top_endpoints: Array<{ endpoint: string; count: number }>;
+    top_clis: Array<{ cli_slug: string; count: number }>;
+    top_queries: Array<{ query: string; count: number }>;
+    last_seen?: string;
+    window_limit: number;
+    truncated: boolean;
+  };
 }
+
+const IN_MEMORY_USAGE_WINDOW_LIMIT = 5000;
 
 function tokenize(input: string) {
   const stopWords = new Set([
@@ -2295,7 +2313,7 @@ export class RegistryStore {
       }
     }
 
-    return {
+    const snapshot = {
       total_requests: this.data.usageEvents.length,
       distinct_api_keys: distinctKeys.size,
       active_api_keys_24h: active24h.size,
@@ -2318,6 +2336,15 @@ export class RegistryStore {
         .sort((a, b) => b.count - a.count)
         .slice(0, 20),
       last_seen: lastSeen,
+    };
+
+    return {
+      all_time: snapshot,
+      retained_window: {
+        ...snapshot,
+        window_limit: IN_MEMORY_USAGE_WINDOW_LIMIT,
+        truncated: this.data.usageEvents.length >= IN_MEMORY_USAGE_WINDOW_LIMIT,
+      },
     };
   }
 

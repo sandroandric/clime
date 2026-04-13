@@ -34,6 +34,159 @@ function ensureAdmin(request: FastifyRequest) {
   }
 }
 
+function renderUsageSummaryPage() {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>clime admin usage summary</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #faf7f2;
+        --surface: #ffffff;
+        --border: #e3d8c6;
+        --text: #201d1a;
+        --muted: #6b6254;
+        --accent: #0a8e89;
+        --accent-soft: rgba(10, 142, 137, 0.1);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+      main { max-width: 1200px; margin: 0 auto; padding: 32px 20px 64px; }
+      h1, h2, h3, p { margin: 0; }
+      p { color: var(--muted); }
+      .stack { display: grid; gap: 20px; }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px; }
+      .controls { display: grid; gap: 12px; }
+      label { display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
+      input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 14px; }
+      button { width: fit-content; border: 0; border-radius: 999px; padding: 12px 18px; font-size: 14px; font-weight: 700; background: var(--accent); color: white; cursor: pointer; }
+      .note { padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--text); font-size: 14px; }
+      .error { color: #b42318; font-size: 14px; min-height: 20px; }
+      .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+      .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+      .stat { border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+      .stat-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); margin-bottom: 6px; }
+      .stat-value { font-size: 26px; font-weight: 700; }
+      .meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
+      .lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
+      ol { margin: 12px 0 0; padding-left: 20px; }
+      li { margin-bottom: 8px; font-size: 14px; }
+      .empty { color: var(--muted); font-size: 14px; margin-top: 12px; }
+      .hidden { display: none; }
+      @media (max-width: 640px) { main { padding: 20px 14px 48px; } .stats { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main class="stack">
+      <section class="card stack">
+        <div class="stack" style="gap:8px">
+          <h1>clime admin usage summary</h1>
+          <p>Internal dashboard for production telemetry. The key stays in session storage only and the actual data request still goes through the admin-only JSON endpoint.</p>
+        </div>
+        <div class="controls">
+          <label>
+            Admin API key
+            <input id="admin-key" type="password" placeholder="Paste CLIME_ADMIN_KEYS value" autocomplete="off" />
+          </label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button id="load-button" type="button">Load summary</button>
+            <button id="clear-button" type="button" style="background:#201d1a">Clear key</button>
+          </div>
+          <div class="note">All-time metrics reflect the full database. Retained-window metrics reflect only the latest 20,000 usage events and are labeled explicitly.</div>
+          <div id="error" class="error"></div>
+        </div>
+      </section>
+      <section id="results" class="summary-grid hidden"></section>
+    </main>
+    <script>
+      const keyInput = document.getElementById('admin-key');
+      const loadButton = document.getElementById('load-button');
+      const clearButton = document.getElementById('clear-button');
+      const errorNode = document.getElementById('error');
+      const resultsNode = document.getElementById('results');
+      const storageKey = 'clime-admin-usage-key';
+
+      const renderList = (title, rows, formatter) => {
+        if (!rows || rows.length === 0) {
+          return '<div class="card"><h3>' + title + '</h3><div class="empty">No data.</div></div>';
+        }
+        return '<div class="card"><h3>' + title + '</h3><ol>' +
+          rows.map((row) => '<li>' + formatter(row) + '</li>').join('') +
+          '</ol></div>';
+      };
+
+      const renderBucket = (title, bucket, note) => {
+        return '<section class="card stack">' +
+          '<div class="stack" style="gap:8px"><h2>' + title + '</h2><p>' + note + '</p></div>' +
+          '<div class="stats">' +
+            '<div class="stat"><span class="stat-label">Requests</span><span class="stat-value">' + bucket.total_requests.toLocaleString() + '</span></div>' +
+            '<div class="stat"><span class="stat-label">Distinct keys</span><span class="stat-value">' + bucket.distinct_api_keys.toLocaleString() + '</span></div>' +
+            '<div class="stat"><span class="stat-label">Active 24h</span><span class="stat-value">' + bucket.active_api_keys_24h.toLocaleString() + '</span></div>' +
+            '<div class="stat"><span class="stat-label">Active 7d</span><span class="stat-value">' + bucket.active_api_keys_7d.toLocaleString() + '</span></div>' +
+            '<div class="stat"><span class="stat-label">Active 30d</span><span class="stat-value">' + bucket.active_api_keys_30d.toLocaleString() + '</span></div>' +
+            '<div class="stat"><span class="stat-label">Last seen</span><span class="stat-value" style="font-size:18px">' + (bucket.last_seen ? new Date(bucket.last_seen).toLocaleString() : 'n/a') + '</span></div>' +
+          '</div>' +
+          (bucket.window_limit ? '<div class="meta">Window limit: ' + bucket.window_limit.toLocaleString() + ' events. Truncated: ' + (bucket.truncated ? 'yes' : 'no') + '.</div>' : '') +
+          '<div class="lists">' +
+            renderList('Top CLIs', bucket.top_clis, (row) => row.cli_slug + ' <strong>(' + row.count + ')</strong>') +
+            renderList('Top queries', bucket.top_queries, (row) => row.query + ' <strong>(' + row.count + ')</strong>') +
+            renderList('Top endpoints', bucket.top_endpoints, (row) => row.endpoint + ' <strong>(' + row.count + ')</strong>') +
+            renderList('Owner types', bucket.owner_types, (row) => row.owner_type + ' <strong>(' + row.count + ')</strong>') +
+          '</div>' +
+        '</section>';
+      };
+
+      async function loadSummary() {
+        const key = keyInput.value.trim();
+        errorNode.textContent = '';
+        resultsNode.classList.add('hidden');
+        resultsNode.innerHTML = '';
+        if (!key) {
+          errorNode.textContent = 'Admin API key is required.';
+          return;
+        }
+        sessionStorage.setItem(storageKey, key);
+        loadButton.disabled = true;
+        loadButton.textContent = 'Loading...';
+        try {
+          const response = await fetch('/v1/admin/usage-summary', { headers: { 'x-api-key': key } });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload?.error?.message || 'Request failed');
+          }
+          resultsNode.innerHTML =
+            renderBucket('All-time', payload.data.all_time, 'Full database aggregate.') +
+            renderBucket('Retained window', payload.data.retained_window, 'Latest 20,000 usage events only.');
+          resultsNode.classList.remove('hidden');
+        } catch (error) {
+          errorNode.textContent = error instanceof Error ? error.message : 'Request failed.';
+        } finally {
+          loadButton.disabled = false;
+          loadButton.textContent = 'Load summary';
+        }
+      }
+
+      loadButton.addEventListener('click', loadSummary);
+      clearButton.addEventListener('click', () => {
+        sessionStorage.removeItem(storageKey);
+        keyInput.value = '';
+        resultsNode.classList.add('hidden');
+        resultsNode.innerHTML = '';
+        errorNode.textContent = '';
+      });
+
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved) {
+        keyInput.value = saved;
+      }
+    </script>
+  </body>
+</html>`;
+}
+
 async function notifyClaimSubmission(input: {
   id: string;
   cli_slug: string;
@@ -97,6 +250,12 @@ export function registerV1Routes(
   store: RegistryStore,
   checksumResolver?: InstallChecksumResolver,
 ) {
+  app.get('/admin/usage-summary', async (_, reply) => {
+    reply.header('cache-control', 'no-store');
+    reply.type('text/html; charset=utf-8');
+    return renderUsageSummaryPage();
+  });
+
   app.get('/v1/openapi', async () => success(buildOpenApiDocument()));
 
   app.post('/v1/search', async (request) => {

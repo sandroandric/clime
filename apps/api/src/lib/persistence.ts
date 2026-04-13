@@ -45,6 +45,90 @@ function keyHash(value: string) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+const GLOBAL_USAGE_WINDOW_LIMIT = 20_000;
+
+type UsageSummaryRow = {
+  endpoint: string;
+  cli_slug: string | null;
+  query: string | null;
+  created_at: string;
+  key_hash: string | null;
+  owner_type: string | null;
+};
+
+function summarizeUsageRows(rows: UsageSummaryRow[]) {
+  const endpointCounts = new Map<string, number>();
+  const cliCounts = new Map<string, number>();
+  const queryCounts = new Map<string, number>();
+  const ownerTypeCounts = new Map<string, number>();
+  const distinctKeys = new Set<string>();
+  const active24h = new Set<string>();
+  const active7d = new Set<string>();
+  const active30d = new Set<string>();
+  const now = Date.now();
+  let lastSeen: string | undefined;
+
+  for (const row of rows) {
+    endpointCounts.set(row.endpoint, (endpointCounts.get(row.endpoint) ?? 0) + 1);
+    if (row.cli_slug) {
+      cliCounts.set(row.cli_slug, (cliCounts.get(row.cli_slug) ?? 0) + 1);
+    }
+    if (row.query) {
+      const normalized = row.query.trim().toLowerCase();
+      if (normalized) {
+        queryCounts.set(normalized, (queryCounts.get(normalized) ?? 0) + 1);
+      }
+    }
+    if (row.owner_type) {
+      ownerTypeCounts.set(row.owner_type, (ownerTypeCounts.get(row.owner_type) ?? 0) + 1);
+    }
+    if (row.key_hash) {
+      distinctKeys.add(row.key_hash);
+      const createdAtMs = Date.parse(row.created_at);
+      if (!Number.isNaN(createdAtMs)) {
+        const ageMs = now - createdAtMs;
+        if (ageMs <= 24 * 60 * 60 * 1000) {
+          active24h.add(row.key_hash);
+        }
+        if (ageMs <= 7 * 24 * 60 * 60 * 1000) {
+          active7d.add(row.key_hash);
+        }
+        if (ageMs <= 30 * 24 * 60 * 60 * 1000) {
+          active30d.add(row.key_hash);
+        }
+      }
+    }
+    if (!lastSeen || Date.parse(row.created_at) > Date.parse(lastSeen)) {
+      lastSeen = toIso(row.created_at);
+    }
+  }
+
+  return {
+    total_requests: rows.length,
+    distinct_api_keys: distinctKeys.size,
+    active_api_keys_24h: active24h.size,
+    active_api_keys_7d: active7d.size,
+    active_api_keys_30d: active30d.size,
+    owner_types: [...ownerTypeCounts.entries()]
+      .map(([owner_type, count]) => ({ owner_type, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20),
+    top_endpoints: [...endpointCounts.entries()]
+      .map(([endpoint, count]) => ({ endpoint, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20),
+    top_clis: [...cliCounts.entries()]
+      .map(([cli_slug, count]) => ({ cli_slug, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20),
+    top_queries: [...queryCounts.entries()]
+      .map(([query, count]) => ({ query, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20),
+    last_seen: lastSeen,
+  };
+}
+
 function vectorLiteral(values: number[]) {
   return `[${values.map((value) => Number(value).toFixed(8)).join(',')}]`;
 }
@@ -87,16 +171,32 @@ export interface PersistenceAdapter {
   apiKeyOwner(apiKey: string): Promise<{ owner_type: string; owner_id?: string } | null>;
   apiKeyUsageSummary(apiKey: string): Promise<ApiKeyUsageSummary>;
   globalUsageSummary(): Promise<{
-    total_requests: number;
-    distinct_api_keys: number;
-    active_api_keys_24h: number;
-    active_api_keys_7d: number;
-    active_api_keys_30d: number;
-    owner_types: Array<{ owner_type: string; count: number }>;
-    top_endpoints: Array<{ endpoint: string; count: number }>;
-    top_clis: Array<{ cli_slug: string; count: number }>;
-    top_queries: Array<{ query: string; count: number }>;
-    last_seen?: string;
+    all_time: {
+      total_requests: number;
+      distinct_api_keys: number;
+      active_api_keys_24h: number;
+      active_api_keys_7d: number;
+      active_api_keys_30d: number;
+      owner_types: Array<{ owner_type: string; count: number }>;
+      top_endpoints: Array<{ endpoint: string; count: number }>;
+      top_clis: Array<{ cli_slug: string; count: number }>;
+      top_queries: Array<{ query: string; count: number }>;
+      last_seen?: string;
+    };
+    retained_window: {
+      total_requests: number;
+      distinct_api_keys: number;
+      active_api_keys_24h: number;
+      active_api_keys_7d: number;
+      active_api_keys_30d: number;
+      owner_types: Array<{ owner_type: string; count: number }>;
+      top_endpoints: Array<{ endpoint: string; count: number }>;
+      top_clis: Array<{ cli_slug: string; count: number }>;
+      top_queries: Array<{ query: string; count: number }>;
+      last_seen?: string;
+      window_limit: number;
+      truncated: boolean;
+    };
   }>;
   persistCliTelemetry(
     cli: CliProfile,
@@ -577,14 +677,7 @@ export class PostgresPersistence implements PersistenceAdapter {
   }
 
   async globalUsageSummary() {
-    const usage = await this.pool.query<{
-      endpoint: string;
-      cli_slug: string | null;
-      query: string | null;
-      created_at: string;
-      key_hash: string | null;
-      owner_type: string | null;
-    }>(
+    const usage = await this.pool.query<UsageSummaryRow>(
       `
       SELECT
         ue.endpoint,
@@ -596,79 +689,103 @@ export class PostgresPersistence implements PersistenceAdapter {
       FROM usage_events ue
       LEFT JOIN api_keys ak ON ak.id = ue.api_key_id
       ORDER BY ue.created_at DESC
-      LIMIT 20000
+      LIMIT ${GLOBAL_USAGE_WINDOW_LIMIT}
     `,
     );
 
-    const endpointCounts = new Map<string, number>();
-    const cliCounts = new Map<string, number>();
-    const queryCounts = new Map<string, number>();
-    const ownerTypeCounts = new Map<string, number>();
-    const distinctKeys = new Set<string>();
-    const active24h = new Set<string>();
-    const active7d = new Set<string>();
-    const active30d = new Set<string>();
-    const now = Date.now();
-    let lastSeen: string | undefined;
+    const [overview, ownerTypes, topEndpoints, topClis, topQueries] = await Promise.all([
+      this.pool.query<{
+        total_requests: string;
+        distinct_api_keys: string;
+        active_api_keys_24h: string;
+        active_api_keys_7d: string;
+        active_api_keys_30d: string;
+        last_seen: string | null;
+      }>(
+        `
+        SELECT
+          COUNT(*)::text AS total_requests,
+          COUNT(DISTINCT ak.key_hash)::text AS distinct_api_keys,
+          COUNT(DISTINCT CASE WHEN ue.created_at >= NOW() - INTERVAL '24 hours' THEN ak.key_hash END)::text AS active_api_keys_24h,
+          COUNT(DISTINCT CASE WHEN ue.created_at >= NOW() - INTERVAL '7 days' THEN ak.key_hash END)::text AS active_api_keys_7d,
+          COUNT(DISTINCT CASE WHEN ue.created_at >= NOW() - INTERVAL '30 days' THEN ak.key_hash END)::text AS active_api_keys_30d,
+          MAX(ue.created_at)::text AS last_seen
+        FROM usage_events ue
+        LEFT JOIN api_keys ak ON ak.id = ue.api_key_id
+      `,
+      ),
+      this.pool.query<{ owner_type: string; count: string }>(
+        `
+        SELECT COALESCE(ak.owner_type, 'unknown') AS owner_type, COUNT(*)::text AS count
+        FROM usage_events ue
+        LEFT JOIN api_keys ak ON ak.id = ue.api_key_id
+        GROUP BY 1
+        ORDER BY COUNT(*) DESC, owner_type ASC
+        LIMIT 20
+      `,
+      ),
+      this.pool.query<{ endpoint: string; count: string }>(
+        `
+        SELECT ue.endpoint, COUNT(*)::text AS count
+        FROM usage_events ue
+        GROUP BY 1
+        ORDER BY COUNT(*) DESC, ue.endpoint ASC
+        LIMIT 20
+      `,
+      ),
+      this.pool.query<{ cli_slug: string; count: string }>(
+        `
+        SELECT ue.cli_slug, COUNT(*)::text AS count
+        FROM usage_events ue
+        WHERE ue.cli_slug IS NOT NULL
+        GROUP BY 1
+        ORDER BY COUNT(*) DESC, ue.cli_slug ASC
+        LIMIT 20
+      `,
+      ),
+      this.pool.query<{ query: string; count: string }>(
+        `
+        SELECT LOWER(TRIM(ue.query)) AS query, COUNT(*)::text AS count
+        FROM usage_events ue
+        WHERE ue.query IS NOT NULL AND TRIM(ue.query) <> ''
+        GROUP BY 1
+        ORDER BY COUNT(*) DESC, query ASC
+        LIMIT 20
+      `,
+      ),
+    ]);
 
-    for (const row of usage.rows) {
-      endpointCounts.set(row.endpoint, (endpointCounts.get(row.endpoint) ?? 0) + 1);
-      if (row.cli_slug) {
-        cliCounts.set(row.cli_slug, (cliCounts.get(row.cli_slug) ?? 0) + 1);
-      }
-      if (row.query) {
-        const normalized = row.query.trim().toLowerCase();
-        if (normalized) {
-          queryCounts.set(normalized, (queryCounts.get(normalized) ?? 0) + 1);
-        }
-      }
-      if (row.owner_type) {
-        ownerTypeCounts.set(row.owner_type, (ownerTypeCounts.get(row.owner_type) ?? 0) + 1);
-      }
-      if (row.key_hash) {
-        distinctKeys.add(row.key_hash);
-        const createdAtMs = Date.parse(row.created_at);
-        if (!Number.isNaN(createdAtMs)) {
-          const ageMs = now - createdAtMs;
-          if (ageMs <= 24 * 60 * 60 * 1000) {
-            active24h.add(row.key_hash);
-          }
-          if (ageMs <= 7 * 24 * 60 * 60 * 1000) {
-            active7d.add(row.key_hash);
-          }
-          if (ageMs <= 30 * 24 * 60 * 60 * 1000) {
-            active30d.add(row.key_hash);
-          }
-        }
-      }
-      if (!lastSeen || Date.parse(row.created_at) > Date.parse(lastSeen)) {
-        lastSeen = toIso(row.created_at);
-      }
-    }
-
+    const overviewRow = overview.rows[0];
     return {
-      total_requests: usage.rows.length,
-      distinct_api_keys: distinctKeys.size,
-      active_api_keys_24h: active24h.size,
-      active_api_keys_7d: active7d.size,
-      active_api_keys_30d: active30d.size,
-      owner_types: [...ownerTypeCounts.entries()]
-        .map(([owner_type, count]) => ({ owner_type, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20),
-      top_endpoints: [...endpointCounts.entries()]
-        .map(([endpoint, count]) => ({ endpoint, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20),
-      top_clis: [...cliCounts.entries()]
-        .map(([cli_slug, count]) => ({ cli_slug, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20),
-      top_queries: [...queryCounts.entries()]
-        .map(([query, count]) => ({ query, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20),
-      last_seen: lastSeen,
+      all_time: {
+        total_requests: Number(overviewRow?.total_requests ?? '0'),
+        distinct_api_keys: Number(overviewRow?.distinct_api_keys ?? '0'),
+        active_api_keys_24h: Number(overviewRow?.active_api_keys_24h ?? '0'),
+        active_api_keys_7d: Number(overviewRow?.active_api_keys_7d ?? '0'),
+        active_api_keys_30d: Number(overviewRow?.active_api_keys_30d ?? '0'),
+        owner_types: ownerTypes.rows.map((entry) => ({
+          owner_type: entry.owner_type,
+          count: Number(entry.count),
+        })),
+        top_endpoints: topEndpoints.rows.map((entry) => ({
+          endpoint: entry.endpoint,
+          count: Number(entry.count),
+        })),
+        top_clis: topClis.rows.map((entry) => ({
+          cli_slug: entry.cli_slug,
+          count: Number(entry.count),
+        })),
+        top_queries: topQueries.rows.map((entry) => ({
+          query: entry.query,
+          count: Number(entry.count),
+        })),
+        last_seen: toIso(overviewRow?.last_seen),
+      },
+      retained_window: {
+        ...summarizeUsageRows(usage.rows),
+        window_limit: GLOBAL_USAGE_WINDOW_LIMIT,
+        truncated: usage.rows.length >= GLOBAL_USAGE_WINDOW_LIMIT,
+      },
     };
   }
 

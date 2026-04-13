@@ -826,27 +826,58 @@ describe('api', () => {
     });
     expect(summary.statusCode).toBe(200);
     const body = summary.json().data as {
-      total_requests: number;
-      distinct_api_keys: number;
-      active_api_keys_24h: number;
-      active_api_keys_7d: number;
-      active_api_keys_30d: number;
-      owner_types: Array<{ owner_type: string; count: number }>;
-      top_endpoints: Array<{ endpoint: string; count: number }>;
-      top_clis: Array<{ cli_slug: string; count: number }>;
-      top_queries: Array<{ query: string; count: number }>;
-      last_seen?: string;
+      all_time: {
+        total_requests: number;
+        distinct_api_keys: number;
+        active_api_keys_24h: number;
+        active_api_keys_7d: number;
+        active_api_keys_30d: number;
+        owner_types: Array<{ owner_type: string; count: number }>;
+        top_endpoints: Array<{ endpoint: string; count: number }>;
+        top_clis: Array<{ cli_slug: string; count: number }>;
+        top_queries: Array<{ query: string; count: number }>;
+        last_seen?: string;
+      };
+      retained_window: {
+        total_requests: number;
+        distinct_api_keys: number;
+        active_api_keys_24h: number;
+        active_api_keys_7d: number;
+        active_api_keys_30d: number;
+        owner_types: Array<{ owner_type: string; count: number }>;
+        top_endpoints: Array<{ endpoint: string; count: number }>;
+        top_clis: Array<{ cli_slug: string; count: number }>;
+        top_queries: Array<{ query: string; count: number }>;
+        last_seen?: string;
+        window_limit: number;
+        truncated: boolean;
+      };
     };
 
-    expect(body.total_requests).toBeGreaterThan(0);
-    expect(body.distinct_api_keys).toBeGreaterThan(0);
-    expect(body.active_api_keys_24h).toBeGreaterThan(0);
-    expect(body.active_api_keys_7d).toBeGreaterThan(0);
-    expect(body.active_api_keys_30d).toBeGreaterThan(0);
-    expect(body.owner_types.some((entry) => entry.owner_type === 'agent')).toBe(true);
-    expect(body.top_endpoints.some((entry) => entry.endpoint === '/v1/discover')).toBe(true);
-    expect(body.top_clis.some((entry) => entry.cli_slug === 'vercel')).toBe(true);
-    expect(body.top_queries.some((entry) => entry.query === 'deploy next.js app')).toBe(true);
+    expect(body.all_time.total_requests).toBeGreaterThan(0);
+    expect(body.all_time.distinct_api_keys).toBeGreaterThan(0);
+    expect(body.all_time.active_api_keys_24h).toBeGreaterThan(0);
+    expect(body.all_time.active_api_keys_7d).toBeGreaterThan(0);
+    expect(body.all_time.active_api_keys_30d).toBeGreaterThan(0);
+    expect(body.all_time.owner_types.some((entry) => entry.owner_type === 'agent')).toBe(true);
+    expect(body.all_time.top_endpoints.some((entry) => entry.endpoint === '/v1/discover')).toBe(true);
+    expect(body.all_time.top_clis.some((entry) => entry.cli_slug === 'vercel')).toBe(true);
+    expect(body.all_time.top_queries.some((entry) => entry.query === 'deploy next.js app')).toBe(true);
+    expect(body.retained_window.total_requests).toBeGreaterThan(0);
+    expect(body.retained_window.window_limit).toBe(5000);
+    expect(typeof body.retained_window.truncated).toBe('boolean');
+  });
+
+  it('serves the internal admin usage dashboard shell without requiring an API key', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/admin/usage-summary',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.body).toContain('clime admin usage summary');
+    expect(response.body).toContain('/v1/admin/usage-summary');
   });
 
   it('returns publisher analytics derived from real telemetry', async () => {
